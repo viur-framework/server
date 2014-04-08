@@ -280,11 +280,12 @@ class Hierarchy( object ):
 			currLevel = db.Get( currLevel["parententry"] )
 		if not isValid:
 			raise errors.NotAcceptable()
-		fromItem = db.Get( item )
-		fromItem["parententry"] = dest 
-		fromItem["parentrepo"] = str( self.getRootNode( dest ).key() )
-		db.Put( fromItem )
-		return( self.render.reparentSuccess( obj=fromItem ) )
+		skel = skeletonByKind( unicode( type(self).__name__).lower() )() #We use the full skeleton to ensure parententry and parentrepo exists
+		assert skel.fromDB( item )
+		skel.parententry.value = dest
+		skel.parentrepo.value = str( self.getRootNode( dest ).key() )
+		skel.toDB( item )
+		return( self.render.reparentSuccess( obj=skel ) )
 
 	
 	@forceSSL
@@ -302,10 +303,11 @@ class Hierarchy( object ):
 			raise errors.PreconditionFailed()
 		if not self.canSetIndex( item, index ):
 			raise errors.Unauthorized()
-		fromItem = db.Get( item )
-		fromItem["sortindex"] = float( index )
-		db.Put( fromItem )
-		return( self.render.setIndexSuccess( obj=fromItem ) )
+		skel = skeletonByKind( unicode( type(self).__name__).lower() )() #We use the full skeleton to ensure parententry and parentrepo exists
+		assert skel.fromDB( item )
+		skel.sortindex.value = float( index )
+		skel.toDB( item )
+		return( self.render.setIndexSuccess( obj=skel ) )
 
 
 	@forceSSL
