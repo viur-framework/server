@@ -193,7 +193,7 @@ class relationalBone( baseBone ):
 		pass
 	
 	def isInvalid( self, id ):
-		return( True )
+		return( False )
 	
 
 	def fromClient( self, name, data ):
@@ -225,20 +225,20 @@ class relationalBone( baseBone ):
 					if value.find("\n")!=-1:
 						for val in value.replace("\r\n","\n").split("\n"):
 							valstr = val
-							if valstr and self.isInvalid(  valstr  ):
+							if valstr and not self.isInvalid(  valstr  ):
 								res.append(  valstr )
 					else:
 						valstr =  value
-						if valstr and self.isInvalid(  valstr ):
+						if valstr and not self.isInvalid(  valstr ):
 							res.append( valstr )
 			else:
 				for val in value:
 					valstr =  val 
-					if valstr and self.isInvalid( valstr  ):
+					if valstr and not self.isInvalid( valstr  ):
 						res.append( valstr )
 		else:
 			valstr = value 
-			if valstr and self.isInvalid( valstr ):
+			if valstr and not self.isInvalid( valstr ):
 				res.append( valstr )
 		
 		if len( res ) == 0:
