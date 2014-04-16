@@ -35,8 +35,8 @@ class fileBaseSkel( TreeLeafSkel ):
 	weak = booleanBone( descr="Is a weak Reference?", indexed=True, readOnly=True, visible=False )
 	servingurl = stringBone( descr="Serving URL", params={"frontend_list_visible": True}, readOnly=True )
 
-	def fromDB( self, *args, **kwargs ):
-		r = super( fileBaseSkel, self ).fromDB( *args, **kwargs )
+	def setValues( self, *args, **kwargs ):
+		r = super( fileBaseSkel, self ).setValues( *args, **kwargs )
 		if not self.mimetype.value:
 			if self.meta_mime.value:
 				self.mimetype.value = self.meta_mime.value
