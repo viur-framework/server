@@ -16,7 +16,7 @@ class IndexMannager:
 
 	"""
 
-	_dbType = "viur_indexes"
+	_dbType = "viur-indexes"
 	
 	def __init__(self, pageSize=10, maxPages=100):
 		self.pageSize = pageSize
@@ -52,19 +52,19 @@ class IndexMannager:
 		@returns: []
 		"""
 		key = self.keyFromQuery( origQuery )
-		if key in self._cache.keys(): #We have it cached
-			return( self._cache[ key ] )
+		#if key in self._cache.keys(): #We have it cached
+		#	return( self._cache[ key ] )
 		#We dont have it cached - try to load it from DB
 		try:
 			index = db.Get( db.Key.from_path( self._dbType, key ) )
 			res = json.loads( index["data"] )
-			self._cache[ key ] = res
+			#self._cache[ key ] = res #Fixme: Maybe request-local - potential oom condition?!
 			return( res )
 		except db.EntityNotFoundError: #Its not in the datastore, too
 			pass
 		#We dont have this index yet.. Build it
 		#Clone the original Query
-		queryRes = origQuery.clone( keysOnly=True ).run( limit=self.maxPages*self.pageSize )
+		queryRes = origQuery.clone( keysOnly=True ).datastoreQuery.Run( limit=self.maxPages*self.pageSize )
 		#Build-Up the index
 		res = [ ] 
 		i = 0
