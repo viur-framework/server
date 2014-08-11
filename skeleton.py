@@ -488,9 +488,11 @@ class SkelList( list ):
 def updateRelations( destID ):
 	#logging.error("updateRelations %s" % destID )
 	for srcRel in db.Query( "viur-relations" ).filter("dest.id =", destID ).iter( ):
-		logging.error("updating ref %s" % srcRel.key().parent() )
+		logging.debug("updating ref %s" % srcRel.key().parent() )
 		skel = skeletonByKind( srcRel["viur_src_kind"] )()
-		skel.fromDB( str(srcRel.key().parent()) )
+		if not skel.fromDB( str(srcRel.key().parent()) ):
+			logging.error("Cannot update stale reference to %s (referenced from %s)" % (str(srcRel.key().parent()), str(srcRel.key())) )
+			return
 		for key in dir( skel ):
 			if not key.startswith("_"):
 				_bone = getattr( skel, key )
