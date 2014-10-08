@@ -4,6 +4,7 @@ from server import session, errors, conf, request
 from server.applications.tree import Tree, TreeNodeSkel, TreeLeafSkel
 from server import forcePost, forceSSL, exposed, internalExposed
 from server.bones import *
+from server.bones.string import escapeValue
 from server import utils, db
 from server.tasks import callDeferred
 from google.appengine.ext import blobstore
@@ -179,9 +180,9 @@ class File( Tree ):
 						else:
 							servingURL = ""
 						fileSkel = self.addLeafSkel()
-						fileSkel.setValues( {	"name": fileName,
+						fileSkel.setValues( {	"name": escapeValue(fileName),
 									"size": upload.size,
-									"mimetype": upload.content_type,
+									"mimetype": escapeValue(upload.content_type),
 									"dlkey": str(upload.key()),
 									"servingurl": servingURL,
 									"parentdir": str(node),
@@ -202,9 +203,9 @@ class File( Tree ):
 						servingURL = ""
 					fileName = self.decodeFileName( upload.filename )
 					fileSkel = self.addLeafSkel()
-					fileSkel.setValues( {	"name": fileName,
+					fileSkel.setValues( {	"name": escapeValue( fileName ),
 								"size": upload.size,
-								"mimetype": upload.content_type,
+								"mimetype": escapeValue( upload.content_type ),
 								"dlkey": str(upload.key()),
 								"servingurl": servingURL,
 								"parentdir": None,
