@@ -4,7 +4,7 @@ from server import session, errors, conf, request
 from server.applications.tree import Tree, TreeNodeSkel, TreeLeafSkel
 from server import forcePost, forceSSL, exposed, internalExposed
 from server.bones import *
-from server.bones.string import escapeValue
+from server.bones.stringBone import escapeValue
 from server import utils, db
 from server.tasks import callDeferred
 from google.appengine.ext import blobstore
