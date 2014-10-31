@@ -210,15 +210,21 @@ class BrowseHandler(webapp.RequestHandler):
 			self.response.out.write("OK")
 			return
 		self.isPostRequest = False
+		self.args = None
+		self.kwargs = None
 		self.processRequest( path, *args, **kwargs )
 
 
 	def post(self, path="/", *args, **kwargs): #Accept a HTTP-POST request
 		self.isPostRequest = True
+		self.args = None
+		self.kwargs = None
 		self.processRequest( path, *args, **kwargs )
 
 	def head(self, path="/", *args, **kwargs): #Accept a HTTP-HEAD request
 		self.isPostRequest = False
+		self.args = None
+		self.kwargs = None
 		self.processRequest( path, *args, **kwargs )
 		
 	def selectLanguage( self, path ):
@@ -267,6 +273,37 @@ class BrowseHandler(webapp.RequestHandler):
 		self.isDevServer = "Development" in os.environ['SERVER_SOFTWARE'] #Were running on development Server
 		self.isSSLConnection = self.request.host_url.lower().startswith("https://") #We have an encrypted channel
 		self.language = conf["viur.defaultLanguage"]
+		request.current.setRequest( self )
+		callArgs = []
+		callKwargs = {}
+		# Parse *args
+		for arg in args:
+			if isinstance( x, unicode):
+				callArgs.append( arg )
+			else:
+				try:
+					callArgs.append( arg.decode("UTF-8") )
+				except:
+					pass
+		# Parse **kwargs
+		# Prevent Hash-collision attacks
+		assert len( self.request.arguments() ) < conf["viur.maxPostParamsCount"]
+		# Fill the (surprisingly empty) kwargs dict with named request params
+		tmpArgs = dict( (k,self.request.get_all(k)) for k in self.request.arguments() )
+		for key in tmpArgs.keys()[ : ]:
+			if len( tmpArgs[ key ] ) == 0:
+				continue
+			if not key in kwargs.keys():
+				if len( tmpArgs[ key ] ) == 1:
+					callKwargs[ key ] = tmpArgs[ key ][0]
+				else:
+					callKwargs[ key ] = tmpArgs[ key ]
+			else:
+				if isinstance( kwargs[key], list ):
+					callKwargs[key] = callKwargs[key] + tmpArgs[key]
+				else:
+					callKwargs[key] = [ callKwargs[key] ] + tmpArgs[key]
+		del tmpArgs
 		if sharedConf["viur.disabled"] and not (users.is_current_user_admin() or "HTTP_X_QUEUE_NAME".lower() in [x.lower() for x in os.environ.keys()] ): #FIXME: Validate this works
 			self.response.set_status( 503 ) #Service unaviable
 			tpl = Template( open("server/template/error.html", "r").read() )
@@ -284,7 +321,9 @@ class BrowseHandler(webapp.RequestHandler):
 		try:
 			session.current.load( self ) # self.request.cookies )
 			path = self.selectLanguage( path )
-			self.findAndCall( path, *args, **kwargs )
+			if conf["viur.requestPreprocessor"]:
+				path, callArgs, callKwargs = conf["viur.requestPreprocessor"]( path, callArgs, callKwargs )
+			self.findAndCall( path, callArgs, callKwargs )
 		except errors.Redirect as e :
 			if conf["viur.debug.traceExceptions"]:
 				raise
@@ -324,28 +363,12 @@ class BrowseHandler(webapp.RequestHandler):
 			self.saveSession( )
 	
 
-	def findAndCall( self, path, *args, **kwargs ): #Do the actual work: process the request
-		# Prevent Hash-collision attacks
-		assert len( self.request.arguments() ) < conf["viur.maxPostParamsCount"]
-		# Fill the (surprisingly empty) kwargs dict with named request params
-		tmpArgs = dict( (k,self.request.get_all(k)) for k in self.request.arguments() )
-		for key in tmpArgs.keys()[ : ]:
-			if len( tmpArgs[ key ] ) == 0:
-				continue
-			if not key in kwargs.keys():
-				if len( tmpArgs[ key ] ) == 1:
-					kwargs[ key ] = tmpArgs[ key ][0]
-				else:
-					kwargs[ key ] = tmpArgs[ key ]
-			else:
-				if isinstance( kwargs[key], list ):
-					kwargs[key] = kwargs[key] + tmpArgs[key]
-				else:
-					kwargs[key] = [ kwargs[key] ] + tmpArgs[key]
-		del tmpArgs
+	def findAndCall( self, path, args, kwargs ): #Do the actual work: process the request
 		if "self" in kwargs.keys(): #self is reserved for bound methods
 			raise errors.BadRequest()
-		request.current.setRequest( self )
+
+		logging.error("x0")
+		logging.error(args)
 		#Parse the URL
 		path = urlparse.urlparse( path ).path
 		self.pathlist = [ urlparse.unquote( x ) for x in path.strip("/").split("/") ]
@@ -380,6 +403,12 @@ class BrowseHandler(webapp.RequestHandler):
 					caller = caller.index
 			else:
 				raise( errors.MethodNotAllowed() )
+		logging.error("x11")
+		logging.error(args)
+		lastArgs = self.args
+		lastKwargs = self.kwargs
+		self.args = args
+		self.kwargs = kwargs
 		# Check for forceSSL flag
 		if not self.internalRequest \
 			and "forceSSL" in dir( caller ) \
@@ -390,16 +419,6 @@ class BrowseHandler(webapp.RequestHandler):
 		# Check for forcePost flag
 		if "forcePost" in dir( caller ) and caller.forcePost and not self.isPostRequest:
 			raise( errors.MethodNotAllowed("You must use POST to access this ressource!") )
-		self.args = []
-		for arg in args:
-			if isinstance( x, unicode):
-				self.args.append( arg )
-			else:
-				try:
-					self.args.append( arg.decode("UTF-8") )
-				except:
-					pass
-		self.kwargs = kwargs
 		try:
 			if (conf["viur.debug.traceExternalCallRouting"] and not self.internalRequest) or conf["viur.debug.traceInternalCallRouting"]:
 				logging.debug("Calling %s with args=%s and kwargs=%s" % (str(caller),unicode(args), unicode(kwargs)))
@@ -429,6 +448,8 @@ class BrowseHandler(webapp.RequestHandler):
 			if not all ( [ x in tmpRes.keys() for x in argsOrder ] ):
 				raise( errors.NotAcceptable() )
 			raise
+		self.args = lastArgs
+		self.kwargs = lastKwargs
 
 
 	def saveSession(self):
