@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 from server.bones import baseBone
 from server.config import conf
-from server import db
-from server import request
-from server import utils
+from server import db, request, utils, translate
 from server.session import current as currentSession
 from google.appengine.api import search
 import logging
@@ -161,6 +159,7 @@ class stringBone( baseBone ):
 			value = data[ name ]
 		else:
 			value = None
+
 		if self.multiple and self.languages:
 			self.value = LanguageWrapper( self.languages )
 			for lang in self.languages:
@@ -173,13 +172,13 @@ class stringBone( baseBone ):
 						for v in val:
 							self.value[ lang ].append( utils.escapeString( v ) )
 			if not any( self.value.values() ):
-				return( "No value entered" )
+				return _("No value entered")
 			else:
 				return( None )
 		elif self.multiple and not self.languages:
 			self.value = []
 			if not value:
-				return( "No value entered" )
+				return _("No value entered")
 			if not isinstance( value, list ):
 				value = [value]
 			for val in value:
@@ -189,7 +188,7 @@ class stringBone( baseBone ):
 				self.value = self.value[0:254] #Max 254 Keys
 				return( None )
 			else:
-				return( "No valid value entered" )
+				return _("No valid value entered")
 		elif not self.multiple and self.languages:
 			self.value = LanguageWrapper( self.languages )
 			err = None
@@ -205,7 +204,7 @@ class stringBone( baseBone ):
 				return( err )
 			else:
 				if len( self.value.keys() )==0: #No valid value
-					return( "No value entered" )
+					return _("No value entered")
 			return( None )
 			
 		else:
@@ -213,7 +212,7 @@ class stringBone( baseBone ):
 			if not err:
 				if not value:
 					self.value = u""
-					return( "No value entered" )
+					return _("No value entered")
 				self.value = utils.escapeString( value )
 				return( None )
 			else:

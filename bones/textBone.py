@@ -203,7 +203,7 @@ class textBone( baseBone ):
 					if not self.isInvalid( val ): #Returns None on success, error-str otherwise
 						self.value[ lang ] = HtmlSerializer( self.validHtml ).santinize( val )
 			if not any( self.value.values() ):
-				return( "No / invalid values entered" )
+				return _("No or invalid value entered")
 			else:
 				return( None )
 		else:
@@ -213,7 +213,7 @@ class textBone( baseBone ):
 				value = None
 			if not value:
 				self.value =""
-				return( "No value entered" )
+				return _("No value entered")
 			if not isinstance( value, str ) and not isinstance( value, unicode ):
 				value = unicode(value)
 			err = self.isInvalid( value )
@@ -221,7 +221,7 @@ class textBone( baseBone ):
 				self.value = HtmlSerializer( self.validHtml ).santinize( value )
 				return( None )
 			else:
-				return( "Invalid value entered" )
+				return _("Invalid value entered")
 
 	def getReferencedBlobs(self):
 		"""

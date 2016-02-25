@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-
-from google.appengine.api import images
 from server.skeleton import Skeleton, skeletonByKind
 from server import utils, db, securitykey, session, errors, conf, request
 from server.prototypes.tree import Tree, TreeNodeSkel, TreeLeafSkel
