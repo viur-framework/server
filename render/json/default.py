@@ -208,6 +208,10 @@ class DefaultRender(object):
 	def edit(self, skel, **kwargs):
 		return self.renderEntry(skel, "edit")
 
+	def desc(self, skel, **kwargs):
+		request.current.get().response.headers["Content-Type"] = "application/json"
+		return json.dumps(self.renderSkelStructure(skel))
+
 	def list(self, skellist, **kwargs):
 		res = {}
 		skels = []
@@ -221,6 +225,7 @@ class DefaultRender(object):
 			res["structure"] = self.renderSkelStructure(skellist.baseSkel)
 		else:
 			res["structure"] = None
+
 		res["cursor"] = skellist.cursor
 		res["action"] = "list"
 		request.current.get().response.headers["Content-Type"] = "application/json"

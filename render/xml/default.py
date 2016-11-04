@@ -232,6 +232,9 @@ class DefaultRender( object ):
 	def edit( self, skel, failed=False, listname="edit" ):
 		return( self.view( skel ) )
 
+	def desc(self, skel, **kwargs):
+		return self.renderSkelStructure(skel)
+
 	def list( self, skellist, **kwargs ):
 		res = {}
 		skels = []

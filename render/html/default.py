@@ -35,6 +35,7 @@ class Render( object ):
 	viewTemplate = "view"
 	addTemplate = "add"
 	editTemplate = "edit"
+	descTemplate = "desc"
 	addSuccessTemplate = "add_success"
 	editSuccessTemplate = "edit_success"
 	deleteSuccessTemplate = "delete_success"
@@ -432,6 +433,16 @@ class Render( object ):
 		return template.render( skel={"structure": self.renderSkelStructure(skel),
 		                                "errors": skel.errors,
 		                                "value": self.collectSkelData(skel) }, **kwargs )
+
+	def desc(self, skel, *args, **kwargs):
+		tpl = self.descTemplate
+
+		if "descTemplate" in dir(self.parent):
+			tpl = self.parent.descTemplate
+
+		template = self.getEnv().get_template(self.getTemplateFileName(tpl))
+
+		return template.render({"skel": self.renderSkelStructure(skel)}, **kwargs)
 
 	def addItemSuccess (self, skel, *args, **kwargs ):
 		"""
