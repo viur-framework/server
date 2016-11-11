@@ -152,7 +152,7 @@ class List(BasicApplication):
 		return self.render.view( skel )
 
 	@exposed
-	def list( self, *args, **kwargs ):
+	def list(self, *args, **kwargs):
 		"""
 		Prepares and renders a list of entries.
 
@@ -173,6 +173,14 @@ class List(BasicApplication):
 			raise errors.Unauthorized()
 		res = query.fetch()
 		return self.render.list( res )
+
+	@exposed
+	def count(self, *args, **kwargs):
+		query = self.listFilter(self.viewSkel().all().mergeExternalFilter(kwargs)) #Access control
+		if query is None:
+			raise errors.Unauthorized()
+
+		return self.render.count(query.count())
 
 	@forceSSL
 	@exposed

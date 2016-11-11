@@ -207,6 +207,14 @@ class DefaultRender(object):
 	def edit(self, skel, **kwargs):
 		return self.renderEntry(skel, "edit")
 
+	def desc(self, skel, **kwargs):
+		request.current.get().response.headers["Content-Type"] = "application/json"
+		return json.dumps(self.renderSkelStructure(skel))
+
+	def count(self, count, **kwargs):
+		request.current.get().response.headers["Content-Type"] = "application/json"
+		return json.dumps(count)
+
 	def list(self, skellist, **kwargs):
 		res = {}
 		skels = []
