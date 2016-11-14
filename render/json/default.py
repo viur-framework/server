@@ -228,6 +228,7 @@ class DefaultRender(object):
 			res["structure"] = self.renderSkelStructure(skellist.baseSkel)
 		else:
 			res["structure"] = None
+
 		res["cursor"] = skellist.cursor
 		res["action"] = "list"
 		request.current.get().response.headers["Content-Type"] = "application/json"

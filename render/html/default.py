@@ -36,7 +36,10 @@ class Render( object ):
 	addTemplate = "add"
 	editTemplate = "edit"
 	descTemplate = "desc"
+<<<<<<< HEAD
 	countTemplate = "count"
+=======
+>>>>>>> feature/desc
 	addSuccessTemplate = "add_success"
 	editSuccessTemplate = "edit_success"
 	deleteSuccessTemplate = "delete_success"
