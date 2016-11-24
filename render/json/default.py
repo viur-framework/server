@@ -181,13 +181,18 @@ class DefaultRender(object):
 
 		return res
 		
-	def renderEntry( self, skel, actionName ):
+	def renderEntry(self, skel, actionName):
+		struct = not bool(int(request.current.get().kwargs.get("_viur.disableStructure", "0")))
+
 		if isinstance(skel, list):
 			vals = [self.renderSkelValues(x) for x in skel]
-			struct = self.renderSkelStructure(skel[0])
+			if struct:
+				struct = self.renderSkelStructure(skel[0])
 		else:
 			vals = self.renderSkelValues(skel)
-			struct = self.renderSkelStructure(skel)
+
+			if struct:
+				struct = self.renderSkelStructure(skel)
 
 		res = {
 			"values": vals,
@@ -216,21 +221,20 @@ class DefaultRender(object):
 		return json.dumps(count)
 
 	def list(self, skellist, **kwargs):
-		res = {}
-		skels = []
+		struct = not bool(int(request.current.get().kwargs.get("_viur.disableStructure", "0")))
 
-		for skel in skellist:
-			skels.append(self.renderSkelValues(skel))
-
-		res["skellist"] = skels
-
-		if skellist:
-			res["structure"] = self.renderSkelStructure(skellist.baseSkel)
+		if struct:
+			struct = self.renderSkelStructure(skellist.baseSkel)
 		else:
-			res["structure"] = None
+			struct = None
 
-		res["cursor"] = skellist.cursor
-		res["action"] = "list"
+		res = {
+			"action": "list",
+			"skellist": [self.renderSkelValues(skel) for skel in skellist],
+			"structure": struct,
+			"cursor": skellist.cursor
+		}
+
 		request.current.get().response.headers["Content-Type"] = "application/json"
 		return json.dumps(res)
 
