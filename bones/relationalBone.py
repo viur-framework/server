@@ -28,6 +28,7 @@ class relationalBone( baseBone ):
 		As a result, you might see stale data until this task has been finished.
 
 		Example:
+
 			* Entity A references Entity B.
 			* Both have a property "name".
 			* Entity B gets updated (it name changes).
@@ -46,6 +47,7 @@ class relationalBone( baseBone ):
 	             format="$(dest.name)", using=None, *args, **kwargs):
 		"""
 			Initialize a new relationalBone.
+
 			:param kind: KindName of the referenced property.
 			:type kind: String
 			:param module: Name of the modul which should be used to select entities of kind "type". If not set,
@@ -111,7 +113,7 @@ class relationalBone( baseBone ):
 			nvalue["dest"] = value
 			value = nvalue
 
-		if "id" in value["dest"].keys() and not "key" in value["dest"].keys():
+		if "id" in value["dest"].keys() and not("key" in value["dest"].keys() and value["dest"]["key"]):
 			value["dest"]["key"] = value["dest"]["id"]
 			del value["dest"]["id"]
 		# UNTIL HERE!
@@ -333,7 +335,7 @@ class relationalBone( baseBone ):
 				else:
 					tmpRes[ idx ][bname] = v
 
-		tmpList = [ (k,v) for k,v in tmpRes.items() ]
+		tmpList = [(k,v) for k,v in tmpRes.items() if "key" in v.keys()]
 		tmpList.sort( key=lambda k: k[0] )
 		tmpList = [{"reltmp":v,"dest":{"key":v["key"]}} for k,v in tmpList]
 		errorDict = {}
@@ -777,7 +779,7 @@ class relationalBone( baseBone ):
 			:param value: The value that should be assigned. It's type depends on the type of that bone
 			:type boneName: object
 			:param append: If true, the given value is appended to the values of that bone instead of
-			replacing it. Only supported on bones with multiple=True
+				replacing it. Only supported on bones with multiple=True
 			:type append: bool
 			:return: Wherever that operation succeeded or not.
 			:rtype: bool
