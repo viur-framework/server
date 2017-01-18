@@ -341,7 +341,7 @@ class BaseSkeleton(object):
 			raise ValueError("%s is no valid bone on this skeleton (%s)" % (boneName, str(self)))
 		return bone.setBoneValue(self.valuesCache, boneName, value, append)
 
-	def fromClient( self, data ):
+	def fromClient(self, data, amend = None):
 		"""
 			Load supplied *data* into Skeleton.
 
@@ -364,10 +364,39 @@ class BaseSkeleton(object):
 		complete = True
 		super(BaseSkeleton, self).__setattr__("errors", {})
 
-		for key, _bone in self.items():
-			if _bone.readOnly:
+		# Check if amending can be performed.
+		# Amending allows for updating explicit bones without touching the bones not involved.
+		bones = None
+
+		if amend:
+			# Amending is allowed, when the parameters in data match only exactly those bones which are allowed
+			# to be amended. If any other bone that is not in the amend list occurs, the function checks for
+			# all bones.
+			allow = ["key"] + amend
+			bones = []
+
+			for key in [k for k in data.keys() if any([k == l or k.startswith("%s." % l) for l in self.keys()])]:
+				if key not in allow:
+					logging.error("Cannot use amend because of '%s'" % key)
+					bones = None
+					break
+
+				bones.append(key)
+
+			if bones:
+				logging.info("AMEND %s" % bones)
+
+		if not bones:
+			bones = self.keys()
+
+		for key in bones:
+			bone = getattr(self, key)
+
+			if bone.readOnly:
 				continue
-			error = _bone.fromClient( self.valuesCache, key, data )
+
+			error = bone.fromClient(self.valuesCache, key, data)
+
 			if isinstance( error, errors.ReadFromClientError ):
 				self.errors.update( error.errors )
 				if error.forceFail:
@@ -375,7 +404,7 @@ class BaseSkeleton(object):
 			else:
 				self.errors[ key ] = error
 
-			if error  and _bone.required:
+			if error and bone.required:
 				complete = False
 				logging.info("%s throws error: %s" % (key, error))
 
@@ -855,7 +884,7 @@ class RelSkel(BaseSkeleton):
 		contained bones remains constant.
 	"""
 
-	def fromClient( self, data ):
+	def fromClient(self, data, amend = None):
 		"""
 			Reads the data supplied by data.
 			Unlike setValues, error-checking is performed.
@@ -870,21 +899,30 @@ class RelSkel(BaseSkeleton):
 		"""
 		complete = True
 		super(BaseSkeleton, self).__setattr__("errors", {})
-		for key,_bone in self.items():
-			if _bone.readOnly:
+
+		for key, bone in self.items():
+			if bone.readOnly:
 				continue
-			error = _bone.fromClient( self.valuesCache, key, data )
+
+			if amend and key in amend and not any([k.startswith(key) for k in data.keys()]):
+				continue
+
+			error = bone.fromClient(self.valuesCache, key, data)
+
 			if isinstance( error, errors.ReadFromClientError ):
 				self.errors.update( error.errors )
 				if error.forceFail:
 					complete = False
 			else:
 				self.errors[ key ] = error
-			if error  and _bone.required:
+
+			if error and bone.required:
 				complete = False
+
 		if( len( data )==0 or (len(data)==1 and "key" in data) or ("nomissing" in data.keys() and str(data["nomissing"])=="1") ):
 			super(BaseSkeleton, self).__setattr__("errors", {})
-		return( complete )
+
+		return complete
 
 	def serialize(self):
 		class FakeEntity(dict):
