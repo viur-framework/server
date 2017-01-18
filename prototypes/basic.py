@@ -1,6 +1,6 @@
 #-*- coding: utf-8 -*-
 from server import conf, errors, utils, exposed
-from server.skeleton import MetaSkel, Skeleton, skeletonByKind
+from server.skeleton import MetaSkel, BaseSkeleton, skeletonByKind
 
 class BasicApplication(object):
 	"""
@@ -103,7 +103,7 @@ class BasicApplication(object):
 			else:
 				skel = skel()
 
-		if not isinstance(skel, Skeleton):
+		if not isinstance(skel, BaseSkeleton):
 			raise errors.NotAcceptable()
 
 		return self.render.desc(skel)
