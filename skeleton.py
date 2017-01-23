@@ -376,12 +376,16 @@ class BaseSkeleton(object):
 			bones = []
 
 			for key in [k for k in data.keys() if any([k == l or k.startswith("%s." % l) for l in self.keys()])]:
-				if key not in allow:
+				if not any([key == k or key.startswith("%s." % k) for k in allow]):
 					logging.error("Cannot use amend because of '%s'" % key)
 					bones = None
 					break
 
-				bones.append(key)
+				if "." in key:
+					key = key.split(".", 1)[0]
+
+				if key not in bones:
+					bones.append(key)
 
 			if bones:
 				logging.info("AMEND %s" % bones)
@@ -390,6 +394,7 @@ class BaseSkeleton(object):
 			bones = self.keys()
 
 		for key in bones:
+			print(key)
 			bone = getattr(self, key)
 
 			if bone.readOnly:
