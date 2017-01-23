@@ -974,6 +974,14 @@ class SkelList( list ):
 			self.baseSkel.setValuesCache(cacheItem)
 			yield self.baseSkel
 
+	def append(self, item):
+		assert isinstance(item, (BaseSkeleton, dict))
+
+		if isinstance(item, BaseSkeleton):
+			item = item.getValuesCache().copy()
+
+		return super(SkelList, self).append(item)
+
 	def pop(self, index=None):
 		item = super(SkelList, self).pop(index)
 		self.baseSkel.setValuesCache(item)
