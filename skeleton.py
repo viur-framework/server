@@ -394,7 +394,6 @@ class BaseSkeleton(object):
 			bones = self.keys()
 
 		for key in bones:
-			print(key)
 			bone = getattr(self, key)
 
 			if bone.readOnly:
@@ -434,7 +433,7 @@ class BaseSkeleton(object):
 		    or ("nomissing" in data.keys() and str(data["nomissing"]) == "1" )):
 			super(BaseSkeleton, self).__setattr__( "errors", {} )
 
-		return( complete )
+		return complete
 
 	def refresh(self):
 		"""
@@ -888,46 +887,6 @@ class RelSkel(BaseSkeleton):
 		The Skeleton stores its bones in an :class:`OrderedDict`-Instance, so the definition order of the
 		contained bones remains constant.
 	"""
-
-	def fromClient(self, data, amend = None):
-		"""
-			Reads the data supplied by data.
-			Unlike setValues, error-checking is performed.
-			The values might be in a different representation than the one used in getValues/serValues.
-			Even if this function returns False, all bones are guranteed to be in a valid state:
-			The ones which have been read correctly contain their data; the other ones are set back to a safe default (None in most cases)
-			So its possible to call save() afterwards even if reading data fromClient faild (through this might violates the assumed consitency-model!).
-
-			@param data: Dictionary from which the data is read
-			@type data: Dict
-			@returns: True if the data was successfully read; False otherwise (eg. some required fields where missing or invalid)
-		"""
-		complete = True
-		super(BaseSkeleton, self).__setattr__("errors", {})
-
-		for key, bone in self.items():
-			if bone.readOnly:
-				continue
-
-			if amend and key in amend and not any([k.startswith(key) for k in data.keys()]):
-				continue
-
-			error = bone.fromClient(self.valuesCache, key, data)
-
-			if isinstance( error, errors.ReadFromClientError ):
-				self.errors.update( error.errors )
-				if error.forceFail:
-					complete = False
-			else:
-				self.errors[ key ] = error
-
-			if error and bone.required:
-				complete = False
-
-		if( len( data )==0 or (len(data)==1 and "key" in data) or ("nomissing" in data.keys() and str(data["nomissing"])=="1") ):
-			super(BaseSkeleton, self).__setattr__("errors", {})
-
-		return complete
 
 	def serialize(self):
 		class FakeEntity(dict):
