@@ -1098,3 +1098,59 @@ def processChunk(module, compact, cursor, allCount=0, notify=None):
 				utils.sendEMail([notify], txt, None)
 		except: #OverQuota, whatever
 			pass
+
+
+### UPDATE ONE FUCKING ENTITY ###
+
+@CallableTask
+class TaskUpdateOneFuckingEntity(CallableTaskBase):
+	"""
+	This tasks loads and saves *one* entity with the given key.
+	This ensures an updated searchIndex and verifies consistency of this data.
+
+	It shall be used for debug and testing purposes.
+	"""
+	key = "updateoneentity"
+	name = u"Refresh single entity"
+	descr = u"This task can be called to update search indexes and relational information of ONE entitiy."
+	direct = True
+
+	def canCall(self):
+		"""Checks wherever the current user can execute this task
+		@returns bool
+		"""
+		user = utils.getCurrentUser()
+		return user is not None and "root" in user["access"]
+
+	def dataSkel(self, key = ""):
+		skel = BaseSkeleton(cloned=True)
+		skel.key = stringBone(descr=u"Key", required=True, defaultValue=key)
+		return skel
+
+	def execute(self, key, *args, **kwargs):
+		logging.info("key %s" % key)
+
+		try:
+			dkey = db.Key(encoded=str(key))
+			kindName = dkey.kind()
+		except:
+			logging.error("Invalid key received!")
+			return
+
+		logging.info("kindName %s" % kindName)
+
+		Skel = skeletonByKind(kindName)
+		if not Skel:
+			logging.error("No Skeleton class found for kindName %s" % kindName)
+			return
+
+		skel = Skel()
+		if not skel.fromDB(str(key)):
+			logging.error("The key %s could not be loaded" % key)
+			return
+
+		skel.refresh()
+		skel.toDB()
+
+		logging.info("OK")
+
