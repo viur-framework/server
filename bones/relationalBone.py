@@ -141,29 +141,29 @@ class relationalBone( baseBone ):
 						try:
 							valuesCache[name].append(self._restoreValueFromDatastore(res))
 						except:
-							raise
-							pass
+							logging.warning("Cannot restore values from datastore")
+
 				else:
 					try:
 						valuesCache[name].append(self._restoreValueFromDatastore(val))
 					except:
-						raise
-						pass
+						logging.warning("Cannot restore values from datastore")
+
 			else:
 				valuesCache[name] = None
 				if isinstance( val, list ) and len( val )>0:
 					try:
 						valuesCache[name] = self._restoreValueFromDatastore(val[0])
 					except:
-						raise
-						pass
+						logging.warning("Cannot restore values from datastore")
+
 				else:
 					if val:
 						try:
 							valuesCache[name] = self._restoreValueFromDatastore(val)
 						except:
-							raise
-							pass
+							logging.warning("Cannot restore values from datastore")
+
 					else:
 						valuesCache[name] = None
 		else:
