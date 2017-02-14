@@ -788,19 +788,26 @@ class relationalBone( baseBone ):
 			:rtype: bool
 		"""
 		from server.skeleton import RefSkel, skeletonByKind
+
 		def relSkelFromKey(key):
 			if not isinstance(key, db.Key):
 				key = db.Key(encoded=key)
+
 			if not key.kind() == self.kind:
 				logging.error("I got a key, which kind doesn't match my type! (Got: %s, my type %s)" % (key.kind(), self.kind))
 				return None
-			entity = db.Get(key)
-			if not entity:
+
+			try:
+				entity = db.Get(key)
+			except db.EntityNotFoundError:
 				logging.error("Key %s not found" % str(key))
 				return None
+
 			relSkel = RefSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
 			relSkel.unserialize(entity)
+
 			return relSkel
+
 		if append and not self.multiple:
 			raise ValueError("Bone %s is not multiple, cannot append!" % boneName)
 		if not self.multiple and not self.using:
