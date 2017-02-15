@@ -800,7 +800,7 @@ class relationalBone( baseBone ):
 			try:
 				entity = db.Get(key)
 			except db.EntityNotFoundError:
-				logging.error("Key %s not found" % str(key))
+				logging.error("%s: Key '%s' not found" % (boneName, str(key)))
 				return None
 
 			relSkel = RefSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
