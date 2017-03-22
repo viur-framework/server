@@ -21,16 +21,16 @@ class Render( default.Render ): #Render user-data to xml
 
 		return self.edit(skel, tpl=tpl, **kwargs)
 
-	def loginSecondFactor(self, factor, tpl=None, **kwargs):
+	def loginSecondFactor(self, method, tpl=None, **kwargs):
 		if "loginSecondFactorTemplate" in dir(self.parent):
 			tpl = tpl or self.parent.loginSecondFactorTemplate
 		else:
 			tpl = tpl or self.loginSecondFactorTemplate
 
 		template= self.getEnv().get_template(self.getTemplateFileName(tpl))
-		return template.render(factor=factor, **kwargs)
+		return template.render(method=method, **kwargs)
 
-	def loginSuccess(self, tpl=None, **kwargs):
+	def loginSucceeded(self, tpl=None, **kwargs):
 		if "loginSuccessTemplate" in dir( self.parent ):
 			tpl = tpl or self.parent.loginSuccessTemplate
 		else:

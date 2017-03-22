@@ -301,6 +301,7 @@ class GoogleAccount(object):
 
 class TimeBasedOTP(object):
 	windowSize = 5
+	method = u"X-VIUR-2FACTOR-TimeBasedOTP"
 
 	def __init__(self, userModule, modulePath):
 		super(TimeBasedOTP, self).__init__()
@@ -309,7 +310,7 @@ class TimeBasedOTP(object):
 
 	@classmethod
 	def get2FactorMethodName(*args,**kwargs):
-		return u"X-VIUR-2FACTOR-TimeBasedOTP"
+		return TimeBasedOTP.method
 
 	def canHandle(self, userKey):
 		user = db.Get(userKey)
@@ -326,7 +327,7 @@ class TimeBasedOTP(object):
 								"timestamp": time(),
 								"failures": 0}
 			session.current.markChanged()
-			return self.userModule.render.loginSecondFactor("X-VIUR-2FACTOR-TimeBasedOTP")
+			return self.userModule.render.loginSecondFactor(TimeBasedOTP.method)
 
 		return None
 
@@ -369,7 +370,7 @@ class TimeBasedOTP(object):
 			raise errors.Forbidden()
 
 		if otptoken is None:
-			self.userModule.render.edit(self.otpSkel(), **kwargs)
+			return self.userModule.render.loginSecondFactor(TimeBasedOTP.method)
 
 		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
@@ -382,7 +383,7 @@ class TimeBasedOTP(object):
 			otptoken = int(otptoken)
 		except:
 			# We got a non-numeric token - this can't be correct
-			self.userModule.render.edit(self.otpSkel(), **kwargs)
+			return self.userModule.render.loginSecondFactor(TimeBasedOTP.method, secondFactorFailed=True)
 
 		#logging.debug(otptoken)
 		#logging.debug(validTokens)
@@ -407,7 +408,7 @@ class TimeBasedOTP(object):
 			session.current["_otp_user"] = token
 			session.current.markChanged()
 
-			return self.userModule.render.edit(self.otpSkel(), loginFailed=True, **kwargs)
+			return self.userModule.render.loginSecondFactor(TimeBasedOTP.method, secondFactorFailed=True)
 
 	def updateTimeDrift(self, userKey, idx):
 		"""

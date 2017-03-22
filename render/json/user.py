@@ -11,8 +11,8 @@ class UserRender(default.DefaultRender): #Render user-data to json
 
 		return self.edit(skel, **kwargs)
 
-	def loginSecondFactor(self, factor, **kwargs):
-		return json.dumps(factor)
+	def loginSecondFactor(self, method, **kwargs):
+		return json.dumps(method)
 
 	def loginSucceeded(self, **kwargs):
 		return json.dumps("OKAY")
