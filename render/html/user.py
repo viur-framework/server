@@ -6,22 +6,38 @@ from server.skeleton import Skeleton
 
 class Render( default.Render ): #Render user-data to xml
 	loginTemplate = "user_login"
-	logoutSuccessTemplate = "user_logout_success"
+	loginSecondFactorTemplate = "user_login_secondfactor"
 	loginSuccessTemplate = "user_login_success"
+	logoutSuccessTemplate = "user_logout_success"
 	verifySuccessTemplate = "user_verify_success"
 	verifyFailedTemplate = "user_verify_failed"
 	passwdRecoverInfoTemplate = "user_passwdrecover_info"
 
-	def login( self, skel, tpl=None,  **kwargs ):
-		return( self.edit( skel,  tpl=(tpl or self.loginTemplate), **kwargs ) )
+	def login(self, skel, tpl=None,  **kwargs):
+		if "loginTemplate" in dir(self.parent):
+			tpl = tpl or self.parent.loginTemplate
+		else:
+			tpl = tpl or self.loginTemplate
 
-	def loginSucceeded( self, tpl=None, **kwargs ):
+		return self.edit(skel, tpl=tpl, **kwargs)
+
+	def loginSecondFactor(self, factor, tpl=None, **kwargs):
+		if "loginSecondFactorTemplate" in dir(self.parent):
+			tpl = tpl or self.parent.loginSecondFactorTemplate
+		else:
+			tpl = tpl or self.loginSecondFactorTemplate
+
+		template= self.getEnv().get_template(self.getTemplateFileName(tpl))
+		return template.render(factor=factor, **kwargs)
+
+	def loginSuccess(self, tpl=None, **kwargs):
 		if "loginSuccessTemplate" in dir( self.parent ):
 			tpl = tpl or self.parent.loginSuccessTemplate
 		else:
 			tpl = tpl or self.loginSuccessTemplate
+
 		template= self.getEnv().get_template( self.getTemplateFileName( tpl ) )
-		return( template.render( **kwargs ) )
+		return template.render(**kwargs)
 
 	def logoutSuccess(self, tpl=None, **kwargs ):
 		if "logoutSuccessTemplate" in dir( self.parent ):

@@ -326,7 +326,7 @@ class TimeBasedOTP(object):
 								"timestamp": time(),
 								"failures": 0}
 			session.current.markChanged()
-			return self.userModule.render.loginSucceeded(msg="X-VIUR-2FACTOR-TimeBasedOTP")
+			return self.userModule.render.loginSecondFactor("X-VIUR-2FACTOR-TimeBasedOTP")
 
 		return None
 
@@ -363,13 +363,13 @@ class TimeBasedOTP(object):
 
 	@exposed
 	@forceSSL
-	def otp(self, otptoken = None, skey = None, *args, **kwargs ):
+	def otp(self, otptoken = None, skey = None, *args, **kwargs):
 		token = session.current.get("_otp_user")
 		if not token:
 			raise errors.Forbidden()
 
 		if otptoken is None:
-			self.userModule.render.edit(self.otpSkel())
+			self.userModule.render.edit(self.otpSkel(), **kwargs)
 
 		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
@@ -381,12 +381,12 @@ class TimeBasedOTP(object):
 		try:
 			otptoken = int(otptoken)
 		except:
-			# We got a non-numeric token - this cant be correct
-			self.userModule.render.edit(self.otpSkel())
+			# We got a non-numeric token - this can't be correct
+			self.userModule.render.edit(self.otpSkel(), **kwargs)
 
-		logging.debug(otptoken)
-		logging.debug(validTokens)
-		logging.debug(otptoken in validTokens)
+		#logging.debug(otptoken)
+		#logging.debug(validTokens)
+		#logging.debug(otptoken in validTokens)
 
 		if otptoken in validTokens:
 			userKey = session.current["_otp_user"]["uid"]
@@ -407,7 +407,7 @@ class TimeBasedOTP(object):
 			session.current["_otp_user"] = token
 			session.current.markChanged()
 
-			return self.userModule.render.edit(self.otpSkel(), loginFailed=True)
+			return self.userModule.render.edit(self.otpSkel(), loginFailed=True, **kwargs)
 
 	def updateTimeDrift(self, userKey, idx):
 		"""
@@ -570,7 +570,7 @@ class User(List):
 		
 		del oldSession
 		session.current["user"] = {}
-		
+
 		for key in ["name", "status", "access"]:
 			try:
 				session.current["user"][key] = res[key]
@@ -626,6 +626,7 @@ class User(List):
 		"""
 			Allow a special key "self" to reference always the current user
 		"""
+
 		if key == "self":
 			user = self.getCurrentUser()
 			if user:
