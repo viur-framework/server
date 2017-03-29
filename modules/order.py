@@ -567,7 +567,7 @@ class Order( List ):
 			steps.append( step )
 
 		return steps
-	
+
 	def getBillPdf(self, orderKey):
 		"""
 			Should be overridden to return the bill (as pdf) for the given order.
@@ -591,7 +591,7 @@ class Order( List ):
 			:rtype: byte | None
 		"""
 		return None
-	
+
 	@exposed
 	def getBill(self, key, *args, **kwargs):
 		"""
@@ -642,7 +642,7 @@ class Order( List ):
 
 		request.current.get().response.headers['Content-Type'] = "application/pdf"
 		return( bill )
-	
+
 	@exposed
 	def checkout( self, step=None, key=None, skey=None, *args, **kwargs ):
 		"""

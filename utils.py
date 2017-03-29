@@ -85,9 +85,6 @@ def sendEMail(dests, name, skel, extraFiles=[], cc=None, bcc=None, replyTo=None,
 		logging.warning("Invalid emailHandler configured, no email will be sent.")
 		return False
 
-
-	logging.error("CALLING %s" % str(handler))
-
 	return handler(dests, name, skel, extraFiles=extraFiles, cc=cc, bcc=bcc, replyTo=replyTo, *args, **kwargs)
 
 
