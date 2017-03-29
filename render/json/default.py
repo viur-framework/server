@@ -181,7 +181,7 @@ class DefaultRender(object):
 
 		return res
 		
-	def renderEntry( self, skel, actionName ):
+	def renderEntry(self, skel, actionName, **res):
 		if isinstance(skel, list):
 			vals = [self.renderSkelValues(x) for x in skel]
 			struct = self.renderSkelStructure(skel[0])
@@ -189,26 +189,25 @@ class DefaultRender(object):
 			vals = self.renderSkelValues(skel)
 			struct = self.renderSkelStructure(skel)
 
-		res = {
+		res.update({
 			"values": vals,
 			"structure": struct,
 			"action": actionName
-		}
+		})
 
 		request.current.get().response.headers["Content-Type"] = "application/json"
 		return json.dumps(res)
 
-	def view(self, skel, listname="view", *args, **kwargs):
-		return self.renderEntry(skel, "view")
+	def view(self, skel, action = "view", **kwargs):
+		return self.renderEntry(skel, action, **kwargs)
 		
-	def add(self, skel, **kwargs):
-		return self.renderEntry(skel, "add")
+	def add(self, skel, action = "add", **kwargs):
+		return self.renderEntry(skel, action, **kwargs)
 
-	def edit(self, skel, **kwargs):
-		return self.renderEntry(skel, "edit")
+	def edit(self, skel, action = "edit", **kwargs):
+		return self.renderEntry(skel, action, **kwargs)
 
-	def list(self, skellist, **kwargs):
-		res = {}
+	def list(self, skellist, **res):
 		skels = []
 
 		for skel in skellist:
@@ -220,19 +219,21 @@ class DefaultRender(object):
 			res["structure"] = self.renderSkelStructure(skellist.baseSkel)
 		else:
 			res["structure"] = None
+
 		res["cursor"] = skellist.cursor
 		res["action"] = "list"
+
 		request.current.get().response.headers["Content-Type"] = "application/json"
 		return json.dumps(res)
 
 	def editItemSuccess(self, skel, **kwargs):
-		return self.renderEntry(skel, "editSuccess")
+		return self.renderEntry(skel, "editSuccess", **kwargs)
 		
 	def addItemSuccess(self, skel, **kwargs):
-		return self.renderEntry(skel, "addSuccess")
+		return self.renderEntry(skel, "addSuccess", **kwargs)
 		
 	def deleteItemSuccess(self, skel, **kwargs):
-		return self.renderEntry(skel, "deleteSuccess")
+		return self.renderEntry(skel, "deleteSuccess", **kwargs)
 
 	def addDirSuccess(self, *args, **kwargs):
 		return json.dumps("OKAY")
