@@ -10,7 +10,6 @@ from server.prototypes.list import List
 from datetime import datetime, timedelta
 import logging
 
-
 class OrderSkel( Skeleton ):
 	kindName = "order"
 
@@ -357,7 +356,7 @@ class Order( List ):
 		self.setCanceled(key)
 		return "OKAY"
 
-	def checkSkipShippingAddress( self, step, orderKey, *args, **kwargs ):
+	def orderStep_checkSkipShippingAddress( self, step, orderKey, *args, **kwargs ):
 		"""
 		This step updates the current order and copies the values from
 		billAddressSkel to shippingAddressSkel if extrashippingaddress is
@@ -382,7 +381,7 @@ class Order( List ):
 			billSkel.toDB()
 			raise SkipStepException()
 
-	def calculateOrderSum( self, step, orderKey, *args, **kwargs ):
+	def orderStep_calculateOrderSum( self, step, orderKey, *args, **kwargs ):
 		"""
 		Calculates the final price for this order.
 		This function *must* be called before any attempt is made to start a payment process.
@@ -399,7 +398,7 @@ class Order( List ):
 		orderObj["price"] = price
 		db.Put( orderObj )
 
-	def startPayment( self, step, orderKey, *args, **kwargs ):
+	def orderStep_startPayment( self, step, orderKey, *args, **kwargs ):
 		"""
 		Starts the payment processing for this order.
 		The order is marked completed, so no further changes can be made.
@@ -474,7 +473,7 @@ class Order( List ):
 		db.RunInTransaction(setKeyTxn, orderKey, idx)
 		self.billSequenceAvailable( orderKey )
 
-	def rebuildSearchIndex(self, step, orderKey, *args, **kwargs ):
+	def orderStep_rebuildSearchIndex(self, step, orderKey, *args, **kwargs ):
 		"""
 			This rewrites the order after its completion.
 			
@@ -490,7 +489,7 @@ class Order( List ):
 
 		skel.toDB()
 	
-	def resetCart(self, step, orderKey, *args, **kwargs ):
+	def orderStep_resetCart(self, step, orderKey, *args, **kwargs ):
 		"""
 			Clears the cart (if any) after the checkout
 			process is finished.
@@ -507,74 +506,65 @@ class Order( List ):
 
 		return self.viewSkel().subSkel(name)
 
-	def tmpSkipCheck(self, *args, **kwargs):
+	def orderStep_Skip(self, *args, **kwargs):
 		raise SkipStepException()
 
-	steps = [
+	@internalExposed
+	def getSteps(self):
+		return [
 				{
-					"preHandler": tmpSkipCheck,
+					"preHandler": self.orderStep_Skip,
 					"mainHandler": {
 						"action": "function",
-						"function": tmpSkipCheck
+						"function": self.orderStep_Skip
 					}
 				},
-				{	
+				{
 					"mainHandler": {
-						"action": "edit", 
+						"action": "edit",
 						"skeleton": "billaddress",
-						"template": "order_billaddress", 
-						"descr":u"Billinginformation"
+						"template": "order_billaddress",
+						"descr": _(u"Billinginformation")
 					}
-				}, 
-				{	
-					"preHandler": checkSkipShippingAddress,
+				},
+				{
+					"preHandler": self.orderStep_checkSkipShippingAddress,
 					"mainHandler": {
-						"action": "edit", 
+						"action": "edit",
 						"skeleton": "shippingaddress",
-						"template": "order_shipaddress", 
-						"descr":u"Shippinginformation"
+						"template": "order_shipaddress",
+						"descr": _(u"Shippinginformation")
 					}
-				}, 
-				{	
+				},
+				{
 					"mainHandler": {
-						"action": "edit", 
+						"action": "edit",
 						"skeleton": "shiptype",
-						"template": "order_payment", 
-						"descr":u"Payment"
-					}, 
-					"postHandler": calculateOrderSum
-				}, 
-				{	
+						"template": "order_payment",
+						"descr": _(u"Payment")
+					},
+					"postHandler": self.orderStep_calculateOrderSum
+				},
+				{
 					"mainHandler": {
-						"action": "view", 
+						"action": "view",
 						"skeleton": "",
-						"template": "order_verify", 
-						"descr":u"Overview"
+						"template": "order_verify",
+						"descr": _(u"Overview")
 					}
-				}, 
-				{	
-					"preHandler": [rebuildSearchIndex,resetCart,startPayment], 
+				},
+				{
+					"preHandler": [self.orderStep_rebuildSearchIndex,
+					               self.orderStep_resetCart,
+					               self.orderStep_startPayment],
 					"mainHandler": {
-						"action": "view", 
+						"action": "view",
 						"skeleton": "",
 						"template": "order_complete",
-						"descr":u"Order completed"
+						"descr": _(u"Order completed")
 					}
 				}
 			]
-	
-	@internalExposed
-	def getSteps(self):
-		steps = []
-
-		for step in self.steps[:]:
-			step = step.copy()
-			step["mainHandler"] = step["mainHandler"].copy()
-			if "descr" in step["mainHandler"]:
-				step["mainHandler"].update({"descr": _(step["mainHandler"]["descr"])})
-			steps.append( step )
-
-		return steps
 
 	def getBillPdf(self, orderKey):
 		"""
@@ -654,7 +644,7 @@ class Order( List ):
 	@exposed
 	def checkout( self, step=None, key=None, skey=None, *args, **kwargs ):
 		"""
-		Performs the checkout process trough the state machine provided by self.steps.
+		Performs the checkout process trough the state machine provided by self.getSteps().
 
 		:param step: The current step index, None for beginning a new checkout
 		:param key: Key of the current checkout
@@ -695,7 +685,7 @@ class Order( List ):
 				orderKey = db.Key( key )
 				step = int( step )
 				assert( step>=0 )
-				assert( step < len( self.steps ) )
+				assert( step < len( self.getSteps() ) )
 			except:
 				raise errors.NotAcceptable()
 
@@ -712,7 +702,7 @@ class Order( List ):
 			if step != 0 and not step-1 in sessionInfo["completedSteps"]  :
 				raise errors.Redirect("?step=0&key=%s" % str( str(orderKey) ) )
 
-			currentStep = self.steps[ step ]
+			currentStep = self.getSteps()[ step ]
 
 			if "preHandler" in currentStep.keys():
 				try:
