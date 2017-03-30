@@ -323,10 +323,14 @@ class Order( List ):
 		:type key: str
 		"""
 
-		if not self.canEdit( key ):
+		skel = self.editSkel()
+		if not skel.fromDB(key):
+			raise errors.NotFound()
+
+		if not self.canEdit(skel):
 			raise errors.Unauthorized()
 
-		if not securitykey.validate( skey ):
+		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
 
 		self.setSend(key)
@@ -340,13 +344,17 @@ class Order( List ):
 		:param key: The key of the order to be marked.
 		:type key: str
 		"""
-		if not self.canEdit( key ):
+		skel = self.editSkel()
+		if not skel.fromDB(key):
+			raise errors.NotFound()
+
+		if not self.canEdit(skel):
 			raise errors.Unauthorized()
 
 		if not securitykey.validate( skey ):
 			raise errors.PreconditionFailed()
 
-		self.setCanceled( key )
+		self.setCanceled(key)
 		return "OKAY"
 
 	def checkSkipShippingAddress( self, step, orderKey, *args, **kwargs ):
