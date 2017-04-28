@@ -315,6 +315,12 @@ class TimeBasedOTP(object):
 		user = db.Get(userKey)
 		return all([(x in user.keys() and (x=="otptimedrift" or bool(user[x]))) for x in ["otpid", "otpkey", "otptimedrift"]])
 
+	class otpSkel( RelSkel ):
+		otptoken = stringBone(descr="Token", required=True, caseSensitive=False, indexed=True)
+
+	def render(self, **params):
+		return self.userModule.render.edit(self.otpSkel(), action="otp", tpl=self.userModule.loginSecondFactorTemplate, **params)
+
 	def startProcessing(self, userKey):
 		user = db.Get(userKey)
 		if all([(x in user.keys() and user[x]) for x in ["otpid", "otpkey"]]):
@@ -326,12 +332,9 @@ class TimeBasedOTP(object):
 								"timestamp": time(),
 								"failures": 0}
 			session.current.markChanged()
-			return self.userModule.render.loginSucceeded(msg="X-VIUR-2FACTOR-TimeBasedOTP")
+			return self.render()
 
 		return None
-
-	class otpSkel( RelSkel ):
-		otptoken = stringBone(descr="Token", required=True, caseSensitive=False, indexed=True)
 
 	def generateOtps(self, secret, timeDrift):
 		"""
@@ -363,13 +366,13 @@ class TimeBasedOTP(object):
 
 	@exposed
 	@forceSSL
-	def otp(self, otptoken = None, skey = None, *args, **kwargs ):
+	def otp(self, otptoken = None, skey = None, *args, **kwargs):
 		token = session.current.get("_otp_user")
 		if not token:
 			raise errors.Forbidden()
 
 		if otptoken is None:
-			self.userModule.render.edit(self.otpSkel())
+			return self.render()
 
 		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
@@ -382,11 +385,11 @@ class TimeBasedOTP(object):
 			otptoken = int(otptoken)
 		except:
 			# We got a non-numeric token - this cant be correct
-			self.userModule.render.edit(self.otpSkel())
+			return self.render()
 
-		logging.debug(otptoken)
-		logging.debug(validTokens)
-		logging.debug(otptoken in validTokens)
+		#logging.debug(otptoken)
+		#logging.debug(validTokens)
+		#logging.debug(otptoken in validTokens)
 
 		if otptoken in validTokens:
 			userKey = session.current["_otp_user"]["uid"]
@@ -407,7 +410,7 @@ class TimeBasedOTP(object):
 			session.current["_otp_user"] = token
 			session.current.markChanged()
 
-			return self.userModule.render.edit(self.otpSkel(), loginFailed=True)
+			return self.render(loginFailed=True)
 
 	def updateTimeDrift(self, userKey, idx):
 		"""
@@ -433,6 +436,7 @@ class User(List):
 	lostPasswordTemplate = "user_lostpassword"
 	verifyEmailAddressMail = "user_verify_address"
 	passwordRecoveryMail = "user_password_recovery"
+	loginSecondFactorTemplate = "user_login_secondfactor"
 
 	authenticationProviders = [UserPassword, GoogleAccount]
 	secondFactorProviders = [TimeBasedOTP]
@@ -570,7 +574,7 @@ class User(List):
 		
 		del oldSession
 		session.current["user"] = {}
-		
+
 		for key in ["name", "status", "access"]:
 			try:
 				session.current["user"][key] = res[key]
