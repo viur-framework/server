@@ -410,7 +410,7 @@ class TimeBasedOTP(object):
 			session.current["_otp_user"] = token
 			session.current.markChanged()
 
-			return self.render(loginFailed=True)
+			return self.render(secondFactorFailed=True)
 
 	def updateTimeDrift(self, userKey, idx):
 		"""
