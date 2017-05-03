@@ -159,11 +159,13 @@ class List(BasicApplication):
 
 		All supplied parameters are interpreted as filters for the elements displayed.
 
-		Unlike other ViUR BasicApplications, the access control in this function is performed
+		Unlike other module prototypes, the access control in this function is performed
 		by calling the function :func:`listFilter`, which updates the query-filter to match only
 		elements which the user is allowed to see.
+		
+		Use the function :func:`count` to count the elements of the selection.
 
-		.. seealso:: :func:`listFilter`, :func:`server.db.mergeExternalFilter`
+		.. seealso:: :func:`count`, :func:`listFilter`, :func:`server.db.mergeExternalFilter`
 
 		:returns: The rendered list objects for the matching entries.
 
@@ -177,6 +179,24 @@ class List(BasicApplication):
 
 	@exposed
 	def count(self, *args, **kwargs):
+		"""
+		Counts the result of entries for a query.
+
+		All supplied parameters are interpreted as filters for the elements displayed.
+
+		Unlike other module prototypes, the access control in this function is performed
+		by calling the function :func:`listFilter`, which updates the query-filter to match only
+		elements which the user is allowed to see.
+		
+		Use the function :func:`list` to fetch a list of skeletons.
+
+		.. seealso:: :func:`list`, :func:`listFilter`, :func:`server.db.mergeExternalFilter`
+
+		:returns: The rendered list objects for the matching entries.
+
+		:raises: :exc:`server.errors.Unauthorized`, if the current user does not have the required permissions.
+		"""
+		
 		query = self.listFilter(self.viewSkel().all().mergeExternalFilter(kwargs)) #Access control
 		if query is None:
 			raise errors.Unauthorized()

@@ -756,6 +756,9 @@ class relationalBone( baseBone ):
 		return res
 
 	def getSearchDocumentFields(self, valuesCache, name, prefix=""):
+		"""
+		Generate fields for Google Search API
+		"""
 		res = []
 
 		if not valuesCache[name]:
@@ -779,7 +782,7 @@ class relationalBone( baseBone ):
 							if field.value not in groups[field.name]:
 								groups[field.name].append(field.value)
 
-			# In case of a multiple relationalBone, we're getting lost of search field types due to combound data fields.
+			# In case of a multiple relationalBone, we're getting lost of search field types due to compound data fields.
 			for field, value in groups.items():
 				res.append(search.TextField(name=prefix + name + field, value=unicode(" ".join(value))))
 
