@@ -25,13 +25,12 @@ class colorBone( baseBone ):
 			:type data: dict
 			:returns: str or None
 		"""
-		if name in data.keys():
-			value = data[ name ]
-		else:
-			value = None
+		value = data.get(name)
+
 		if self.mode!="rgb" and self.mode!="rgba":
 			return "Invalid mode selected"
-		if value is None:
+
+		if value is not None:
 			if self.required:
 				return "No value selected"
 			else:
