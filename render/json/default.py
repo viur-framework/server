@@ -45,9 +45,9 @@ class DefaultRender( object ):
 					res[key]["multiple"]=_bone.multiple
 					res[key]["format"] = _bone.format
 				if( isinstance( _bone, bones.treeDirBone ) ):
-						boneType = "treedir"
-						res[key]["type"]="%s.%s" % (boneType,_bone.type)
-						res[key]["multiple"]=_bone.multiple
+					boneType = "relational.treedir"
+					res[key]["type"]="%s.%s" % (boneType,_bone.type)
+					res[key]["multiple"]=_bone.multiple
 				if ( isinstance( _bone, bones.selectOneBone ) or  isinstance( _bone, bones.selectMultiBone ) ):
 					res[key]["values"] = dict( [(k,_(v)) for (k,v) in _bone.values.items() ] )
 					res[key]["sortBy"] = _bone.sortBy
