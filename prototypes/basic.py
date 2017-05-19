@@ -74,7 +74,7 @@ class BasicApplication(object):
 			return False
 
 		cuser = utils.getCurrentUser()
-		return bool(cuser and ("root" in cuser["access"] or "admin" in cuser["access"]))
+		return bool(cuser and any(right in cuser["access"] for right in ["root", "admin", "%s-view" % self.moduleName]))
 
 	@exposed
 	def desc(self, skel = "_resolveSkelCls", subSkel = None, *args, **kwargs):
