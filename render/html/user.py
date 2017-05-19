@@ -4,9 +4,8 @@ from string import Template
 import default
 from server.skeleton import Skeleton
 
-class Render( default.Render ): #Render user-data to xml
+class Render(default.Render): #Render user-data to HTML
 	loginTemplate = "user_login"
-	loginSecondFactorTemplate = "user_login_secondfactor"
 	loginSuccessTemplate = "user_login_success"
 	logoutSuccessTemplate = "user_logout_success"
 	verifySuccessTemplate = "user_verify_success"
@@ -21,22 +20,13 @@ class Render( default.Render ): #Render user-data to xml
 
 		return self.edit(skel, tpl=tpl, **kwargs)
 
-	def loginSecondFactor(self, method, tpl=None, **kwargs):
-		if "loginSecondFactorTemplate" in dir(self.parent):
-			tpl = tpl or self.parent.loginSecondFactorTemplate
-		else:
-			tpl = tpl or self.loginSecondFactorTemplate
-
-		template= self.getEnv().get_template(self.getTemplateFileName(tpl))
-		return template.render(method=method, **kwargs)
-
 	def loginSucceeded(self, tpl=None, **kwargs):
-		if "loginSuccessTemplate" in dir( self.parent ):
+		if "loginSuccessTemplate" in dir(self.parent):
 			tpl = tpl or self.parent.loginSuccessTemplate
 		else:
 			tpl = tpl or self.loginSuccessTemplate
 
-		template= self.getEnv().get_template( self.getTemplateFileName( tpl ) )
+		template = self.getEnv().get_template(self.getTemplateFileName(tpl))
 		return template.render(**kwargs)
 
 	def logoutSuccess(self, tpl=None, **kwargs ):

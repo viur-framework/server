@@ -301,7 +301,6 @@ class GoogleAccount(object):
 
 class TimeBasedOTP(object):
 	windowSize = 5
-	method = u"X-VIUR-2FACTOR-TimeBasedOTP"
 
 	def __init__(self, userModule, modulePath):
 		super(TimeBasedOTP, self).__init__()
@@ -310,11 +309,17 @@ class TimeBasedOTP(object):
 
 	@classmethod
 	def get2FactorMethodName(*args,**kwargs):
-		return TimeBasedOTP.method
+		return u"X-VIUR-2FACTOR-TimeBasedOTP"
 
 	def canHandle(self, userKey):
 		user = db.Get(userKey)
 		return all([(x in user.keys() and (x=="otptimedrift" or bool(user[x]))) for x in ["otpid", "otpkey", "otptimedrift"]])
+
+	class otpSkel( RelSkel ):
+		otptoken = stringBone(descr="Token", required=True, caseSensitive=False, indexed=True)
+
+	def render(self, **params):
+		return self.userModule.render.edit(self.otpSkel(), action="otp", tpl=self.userModule.loginSecondFactorTemplate, **params)
 
 	def startProcessing(self, userKey):
 		user = db.Get(userKey)
@@ -327,12 +332,9 @@ class TimeBasedOTP(object):
 								"timestamp": time(),
 								"failures": 0}
 			session.current.markChanged()
-			return self.userModule.render.loginSecondFactor(TimeBasedOTP.method)
+			return self.render()
 
 		return None
-
-	class otpSkel( RelSkel ):
-		otptoken = stringBone(descr="Token", required=True, caseSensitive=False, indexed=True)
 
 	def generateOtps(self, secret, timeDrift):
 		"""
@@ -370,7 +372,7 @@ class TimeBasedOTP(object):
 			raise errors.Forbidden()
 
 		if otptoken is None:
-			return self.userModule.render.loginSecondFactor(TimeBasedOTP.method)
+			return self.render()
 
 		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
@@ -382,8 +384,8 @@ class TimeBasedOTP(object):
 		try:
 			otptoken = int(otptoken)
 		except:
-			# We got a non-numeric token - this can't be correct
-			return self.userModule.render.loginSecondFactor(TimeBasedOTP.method, secondFactorFailed=True)
+			# We got a non-numeric token - this cant be correct
+			return self.render()
 
 		#logging.debug(otptoken)
 		#logging.debug(validTokens)
@@ -408,7 +410,7 @@ class TimeBasedOTP(object):
 			session.current["_otp_user"] = token
 			session.current.markChanged()
 
-			return self.userModule.render.loginSecondFactor(TimeBasedOTP.method, secondFactorFailed=True)
+			return self.render(secondFactorFailed=True)
 
 	def updateTimeDrift(self, userKey, idx):
 		"""
@@ -434,6 +436,7 @@ class User(List):
 	lostPasswordTemplate = "user_lostpassword"
 	verifyEmailAddressMail = "user_verify_address"
 	passwordRecoveryMail = "user_password_recovery"
+	loginSecondFactorTemplate = "user_login_secondfactor"
 
 	authenticationProviders = [UserPassword, GoogleAccount]
 	secondFactorProviders = [TimeBasedOTP]
@@ -598,13 +601,19 @@ class User(List):
 			raise errors.Unauthorized()
 		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
+
+		self.onLogout(user)
+
 		oldSession = {k: v for k, v in session.current.items()}  # Store all items in the current session
 		session.current.reset()
+
 		# Copy the persistent fields over
 		for k in conf["viur.session.persistentFieldsOnLogout"]:
 			if k in oldSession.keys():
 				session.current[k] = oldSession[k]
+
 		del oldSession
+
 		return self.render.logoutSuccess()
 
 	@exposed
@@ -614,6 +623,9 @@ class User(List):
 	def onLogin(self):
 		usr = self.getCurrentUser()
 		logging.info( "User logged in: %s" % usr["name"])
+
+	def onLogout(self, usr):
+		logging.info( "User logged out: %s" % usr["name"])
 
 	@exposed
 	def edit(self,  *args,  **kwargs):
@@ -627,7 +639,6 @@ class User(List):
 		"""
 			Allow a special key "self" to reference always the current user
 		"""
-
 		if key == "self":
 			user = self.getCurrentUser()
 			if user:

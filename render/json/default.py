@@ -181,7 +181,7 @@ class DefaultRender(object):
 
 		return res
 		
-	def renderEntry(self, skel, actionName, **res):
+	def renderEntry(self, skel, actionName, **params):
 		if isinstance(skel, list):
 			vals = [self.renderSkelValues(x) for x in skel]
 			struct = self.renderSkelStructure(skel[0])
@@ -189,11 +189,12 @@ class DefaultRender(object):
 			vals = self.renderSkelValues(skel)
 			struct = self.renderSkelStructure(skel)
 
-		res.update({
+		res = {
+			"action": actionName,
 			"values": vals,
 			"structure": struct,
-			"action": actionName
-		})
+			"params": params
+		}
 
 		request.current.get().response.headers["Content-Type"] = "application/json"
 		return json.dumps(res)
@@ -207,21 +208,14 @@ class DefaultRender(object):
 	def edit(self, skel, action = "edit", **kwargs):
 		return self.renderEntry(skel, action, **kwargs)
 
-	def list(self, skellist, **res):
-		skels = []
-
-		for skel in skellist:
-			skels.append(self.renderSkelValues(skel))
-
-		res["skellist"] = skels
-
-		if skellist:
-			res["structure"] = self.renderSkelStructure(skellist.baseSkel)
-		else:
-			res["structure"] = None
-
-		res["cursor"] = skellist.cursor
-		res["action"] = "list"
+	def list(self, skellist, action = "list", **params):
+		res = {
+			"action": action,
+			"skellist": [self.renderSkelValues(skel) for skel in skellist],
+			"structure": self.renderSkelStructure(skellist.baseSkel) if skellist else None,
+			"cursor": skellist.cursor,
+			"params": params
+		}
 
 		request.current.get().response.headers["Content-Type"] = "application/json"
 		return json.dumps(res)
