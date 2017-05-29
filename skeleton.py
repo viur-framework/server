@@ -871,7 +871,8 @@ class Skeleton(BaseSkeleton):
 				search.Index(name=self.searchIndex).remove("s_" + str(key))
 			except:
 				pass
-		self["key"] = None
+
+		#self["key"] = None
 
 
 
