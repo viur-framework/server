@@ -392,6 +392,9 @@ class BaseSkeleton(object):
 
 		if not bones:
 			bones = self.keys()
+			onAmend = False
+		else:
+			onAmend = True
 
 		for key in bones:
 			bone = getattr(self, key)
@@ -407,6 +410,8 @@ class BaseSkeleton(object):
 					complete = False
 			else:
 				self.errors[ key ] = error
+				if error and onAmend:
+					complete = False
 
 			if error and bone.required:
 				complete = False
