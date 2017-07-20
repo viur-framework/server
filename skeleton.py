@@ -407,8 +407,6 @@ class BaseSkeleton(object):
 					complete = False
 			else:
 				self.errors[ key ] = error
-				if error:
-					complete = False
 
 			if error and bone.required:
 				complete = False

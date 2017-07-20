@@ -185,11 +185,11 @@ class stringBone( baseBone ):
 							else:
 								lastError = err
 			if not any(res.values()) and not lastError:
-				lastError = "No rawValue entered"
+				lastError = "No value entered"
 		elif self.multiple and not self.languages:
 			res = []
 			if not rawValue:
-				lastError = "No rawValue entered"
+				lastError = "No value entered"
 			else:
 				if not isinstance( rawValue, list ):
 					rawValue = [rawValue]
@@ -202,7 +202,7 @@ class stringBone( baseBone ):
 				if len(res) > 0:
 					res = res[0:254]  # Max 254 character 
 				else:
-					lastError = "No valid rawValue entered"
+					lastError = "No valid value entered"
 		elif not self.multiple and self.languages:
 			res = LanguageWrapper( self.languages )
 			for lang in self.languages:
@@ -214,7 +214,7 @@ class stringBone( baseBone ):
 					else:
 						lastError = err
 			if len(res.keys())==0 and not lastError:
-				lastError = "No rawValue entered"
+				lastError = "No value entered"
 		else:
 			err = self.isInvalid(rawValue)
 			if not err:
@@ -222,7 +222,7 @@ class stringBone( baseBone ):
 			else:
 				lastError = err
 			if not rawValue and not lastError:
-				lastError = "No rawValue entered"
+				lastError = "No value entered"
 		valuesCache[name] = res
 		return lastError
 				

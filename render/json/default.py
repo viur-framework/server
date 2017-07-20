@@ -100,6 +100,7 @@ class DefaultRender(object):
 		if isinstance(skel, dict):
 			return None
 		res = OrderedDict()
+
 		for key, bone in skel.items():
 			#if "__" in key or not isinstance(bone, bones.baseBone):
 			#	continue

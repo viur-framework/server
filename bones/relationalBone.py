@@ -388,7 +388,7 @@ class relationalBone( baseBone ):
 			if self.using is not None:
 				refSkel = self.using()
 				if not refSkel.fromClient(r["reltmp"]):
-					for k,v in refSkel.errors.items():
+					for k, v in refSkel.errors.items():
 						if v is None:
 							continue
 
