@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
-from server import utils, request, conf, prototypes, securitykey
+from server import utils, request, conf, prototypes, securitykey, errors
 from server.skeleton import Skeleton, RelSkel
-
 from server.render.html.utils import jinjaGlobalFunction, jinjaGlobalFilter
 from server.render.html.wrap import ListWrapper, SkelListWrapper
-
 import urllib
 from hashlib import sha512
-
 from google.appengine.ext import db
 from google.appengine.api import memcache, users
-
+from collections import OrderedDict
+import string
 import logging
 
 @jinjaGlobalFunction
@@ -36,15 +34,21 @@ def execRequest(render, path, *args, **kwargs):
 	if conf["viur.disableCache"] or request.current.get().disableCache: #Caching disabled by config
 		cachetime = 0
 
+	cacheEnvKey = None
+	if conf["viur.cacheEnvironmentKey"]:
+		try:
+			cacheEnvKey = conf["viur.cacheEnvironmentKey"]()
+		except RuntimeError:
+			cachetime = 0
+
 	if cachetime:
 		#Calculate the cache key that entry would be stored under
 		tmpList = ["%s:%s" % (unicode(k), unicode(v)) for k,v in kwargs.items()]
 		tmpList.sort()
 		tmpList.extend(list(args))
 		tmpList.append(path)
-
-		if conf[ "viur.cacheEnvironmentKey" ]:
-			tmpList.append( conf[ "viur.cacheEnvironmentKey" ]() )
+		if cacheEnvKey is not None:
+			tmpList.append(cacheEnvKey)
 
 		try:
 			appVersion = request.current.get().request.environ["CURRENT_VERSION_ID"].split('.')[0]
@@ -146,7 +150,7 @@ def getEntry(render, module, key=None, skel = "viewSkel"):
 		skel = getattr(obj, skel)()
 
 		if isinstance(obj, prototypes.singleton.Singleton) and not key:
-			#We fetching the entry from a singleton - No key needed
+			# We fetching the entry from a singleton - No key needed
 			key = str(db.Key.from_path(skel.kindName, obj.getKey()))
 		elif not key:
 			logging.info("getEntry called without a valid key")
@@ -155,7 +159,24 @@ def getEntry(render, module, key=None, skel = "viewSkel"):
 		if not isinstance(skel, Skeleton):
 			return False
 
-		if "listFilter" in dir(obj):
+		if "canView" in dir(obj):
+			if not skel.fromDB(key):
+				logging.info("getEntry: Entry %s not found" % (key,))
+				return None
+			if isinstance(obj, prototypes.singleton.Singleton):
+				isAllowed = obj.canView()
+			elif isinstance(obj, prototypes.tree.Tree):
+				k = db.Key(key)
+				if k.kind().endswith("_rootNode"):
+					isAllowed = obj.canView("node", skel)
+				else:
+					isAllowed = obj.canView("leaf", skel)
+			else:  # List and Hierarchies
+				isAllowed = obj.canView(skel)
+			if not isAllowed:
+				logging.error("getEntry: Access to %s denied from canView" % (key,))
+				return None
+		elif "listFilter" in dir(obj):
 			qry = skel.all().mergeExternalFilter({"key": str(key)})
 			qry = obj.listFilter(qry)
 			if not qry:
@@ -348,7 +369,7 @@ def updateURL(render, **kwargs):
 
 	for key, value in list(kwargs.items()):
 		if value is None:
-			if value in tmpparams.keys():
+			if key in tmpparams.keys():
 				del tmpparams[ key ]
 		else:
 			tmpparams[key] = value
@@ -464,3 +485,68 @@ def shortKey(render, val):
 		return k.id_or_name()
 	except:
 		return None
+
+@jinjaGlobalFunction
+def renderEditBone(render, skel, boneName, style=None):
+	if not isinstance(skel, dict) or not all([x in skel.keys() for x in ["errors", "structure", "value"]]):
+		raise ValueError("This does not look like an editable Skeleton!")
+	boneParams = skel["structure"].get(boneName)
+	if not boneParams:
+		raise ValueError("Bone %s is not part of that skeleton" % boneName)
+	boneType = boneParams["type"]
+	fileName = "bones_" + boneType
+	while fileName:
+		try:
+			fn = render.getTemplateFileName(fileName)
+			break
+		except errors.NotFound:
+			if "." in fileName:
+				fileName, unused = fileName.rsplit(".", 1)
+			else:
+				fn = render.getTemplateFileName("bones_bone")
+				break
+	tpl = render.getEnv().get_template(fn)
+	return  tpl.render(boneName=boneName, boneParams=boneParams, boneValue=skel["value"].get(boneName, None))
+
+	return boneType
+
+
+@jinjaGlobalFunction
+def renderEditForm(render, skel, ignore=None, hide=None, style=None):
+	if not isinstance(skel, dict) or not all([x in skel.keys() for x in ["errors", "structure", "value"]]):
+		raise ValueError("This does not look like an editable Skeleton!")
+	res = u""
+	sectionTpl = render.getEnv().get_template(render.getTemplateFileName("dynaform_section"))
+	rowTpl = render.getEnv().get_template(render.getTemplateFileName("dynaform_row"))
+	sections = OrderedDict()
+	for boneName, boneParams in skel["structure"].items():
+		category = _("server.render.html.default_category")
+		if "params" in boneParams.keys() and isinstance(boneParams["params"],dict):
+			category = boneParams["params"].get("category", category)
+		if not category in sections.keys():
+			sections[category] = []
+		sections[category].append((boneName, boneParams))
+	for category, boneList in sections.items():
+		allReadOnly = True
+		allHidden = True
+		categoryContent = u""
+		for boneName, boneParams in boneList:
+			boneWasInvalid = isinstance(skel["errors"], dict) and boneName in skel["errors"].keys()
+			if not boneParams["readOnly"]:
+				allReadOnly = False
+			if boneParams["visible"]:
+				allHidden = False
+			editWidget = renderEditBone(render, skel, boneName)
+			categoryContent += rowTpl.render(boneName = boneName,
+			                                 boneParams = boneParams,
+			                                 boneWasInvalid = boneWasInvalid,
+			                                 editWidget = editWidget)
+		res += sectionTpl.render(categoryName=category,
+		                         categoryClassName = "".join([x for x in category if x in string.ascii_letters]),
+		                         categoryContent = categoryContent,
+		                         allReadOnly = allReadOnly,
+		                         allHidden = allHidden)
+
+
+	return res
+

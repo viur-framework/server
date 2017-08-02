@@ -15,10 +15,11 @@
 
    I N F O R M A T I O N    S Y S T E M
 
- ViUR SERVER
- Copyright 2012-2016 by mausbrand Informationssysteme GmbH
+ ViUR® SERVER
+ Copyright 2012-2017 by mausbrand Informationssysteme GmbH
 
- http://www.viur.is
+ ViUR® is a free software development framework for the Google App Engine™.
+ More about ViUR can be found at http://www.viur.is/.
 
  Licensed under the GNU Lesser General Public License, version 3.
  See file LICENSE for more information.
@@ -88,11 +89,13 @@ def translate( key, **kwargs ):
 	To support internationalization, it is simply done this way:
 
 	.. code-block:: python
+
 		txt = _( "Hello {{user}}!", user="John Doe" ) + " - "  + _( "Welcome to ViUR" )
 
 	Language support is also provided in Jinja2-templates like this:
 
-	.. code-block:: jinja2
+	.. code-block:: jinja
+
 		{{ _( "Hello {{user}}!", user="John Doe" ) }} - {{ _( "Welcome to ViUR" ) }}
 
 	This will both output "Hello John Doe! - Welcome to ViUR" in an english-configured language environment,
@@ -101,15 +104,16 @@ def translate( key, **kwargs ):
 	The current session language (or default language) can be overridden with ``_lang``, e.g.
 
 	.. code-block:: python
+
 		txt = _( "Hello {{user}}!", user="John Doe" ) + " - "  + _( "Welcome to ViUR", lang="en" )
 
 	will result in "Hallo John Doe! - Welcome to ViUR" in a german-configured language environment.
 
-	:param key: The key value that should be translated; If no key is found in the configured language,\
-	key is directly used.
+	:param key: The key value that should be translated; If no key is found in the configured language,
+		key is directly used.
 	:type key: str
-	:param kwargs: May contain place-holders replaced as ``{{placeholer}}`` within the key or translation.\
-	The special-value ``_lang`` overrides the current language setting.
+	:param kwargs: May contain place-holders replaced as ``{{placeholer}}`` within the key or translation.
+		The special-value ``_lang`` overrides the current language setting.
 
 	:return: Translated text or key, with replaced placeholders, if given.
 	:rtype: str
@@ -305,7 +309,13 @@ def buildApp( config, renderers, default=None, *args, **kwargs ):
 			logging.warning("The Export-API is enabled. Everyone having that key can read the whole database!")
 
 		setattr( res, "dbtransfer", DbTransfer() )
-
+	if conf["viur.debug.traceExternalCallRouting"] or conf["viur.debug.traceInternalCallRouting"]:
+		from server import utils
+		try:
+			utils.sendEMailToAdmins("Debug mode enabled",
+			                        "ViUR just started a new Instance with calltracing enabled! This will log sensitive information!")
+		except:  # OverQuota, whatever
+			pass  # Dont render this instance unusable
 	if default in rendlist and "renderEmail" in dir (rendlist[ default ]["default"]()):
 		conf["viur.emailRenderer"] = rendlist[ default ]["default"]().renderEmail
 	elif "html" in list(rendlist.keys()):

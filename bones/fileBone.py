@@ -2,14 +2,15 @@
 from server.bones import treeItemBone
 from server import db, request
 from server.utils import normalizeKey
-
+from google.appengine.api import images
 from hashlib import sha256
 import logging
 
 class fileBone(treeItemBone):
 	kind = "file"
-	refKeys = ["name", "meta_mime", "metamime", "mimetype", "dlkey", "servingurl", "size"]
-	
+	type = "relational.treeitem.file"
+	refKeys = ["name", "key", "meta_mime", "metamime", "mimetype", "dlkey", "servingurl", "size"]
+
 	def __init__(self, format="$(dest.name)",*args, **kwargs ):
 		assert "dlkey" in self.refKeys, "You cannot remove dlkey from refKeys!"
 		super( fileBone, self ).__init__( format=format, *args, **kwargs )
@@ -36,6 +37,19 @@ class fileBone(treeItemBone):
 					if isinstance(val, dict) and "servingurl" in val["dest"].keys():
 						if val["dest"]["servingurl"].startswith("http://"):
 							val["dest"]["servingurl"] = val["dest"]["servingurl"].replace("http://","https://")
+		if isinstance(valuesCache[name], dict):
+			if not "mimetype" in valuesCache[name]["dest"].keys() or not valuesCache[name]["dest"]["mimetype"]:
+				if "meta_mime" in valuesCache[name]["dest"].keys() and valuesCache[name]["dest"]["meta_mime"]:
+					valuesCache[name]["dest"]["mimetype"] = valuesCache[name]["dest"]["meta_mime"]
+				elif "metamime" in valuesCache[name]["dest"].keys() and valuesCache[name]["dest"]["metamime"]:
+					valuesCache[name]["dest"]["mimetype"] = valuesCache[name]["dest"]["metamime"]
+		elif isinstance(valuesCache[name], list):
+			for val in valuesCache[name]:
+				if not "mimetype" in val["dest"].keys() or not val["dest"]["mimetype"]:
+					if "meta_mime" in val["dest"].keys() and val["dest"]["meta_mime"]:
+						val["dest"]["mimetype"] = val["dest"]["meta_mime"]
+					elif "metamime" in val["dest"].keys() and val["dest"]["metamime"]:
+						val["dest"]["mimetype"] = val["dest"]["metamime"]
 		return res
 
 	def refresh(self, valuesCache, boneName, skel):
@@ -78,6 +92,13 @@ class fileBone(treeItemBone):
 
 					logging.info("Refreshing file dlkey %s (%s)" % (valDict["dlkey"],
 					                                                valDict["servingurl"]))
+				else:
+					if valDict["servingurl"]:
+						try:
+							valDict["servingurl"] = images.get_serving_url(valDict["dlkey"])
+						except Exception as e:
+							logging.exception(e)
+
 
 		if not valuesCache[boneName]:
 			return

@@ -5,7 +5,7 @@ from datetime import datetime
 
 from server import db, request, errors, conf, exposed, utils
 from server.bones import *
-from server.skeleton import Skeleton, skeletonByKind, listKnownSkeletons
+from server.skeleton import BaseSkeleton, skeletonByKind, listKnownSkeletons
 from server.tasks import CallableTask, CallableTaskBase, callDeferred
 
 from server.prototypes.hierarchy import HierarchySkel
@@ -21,11 +21,12 @@ from google.appengine.datastore import datastore_query
 
 from itertools import izip
 from hashlib import sha256
+import email.header
+from quopri import decodestring
+from base64 import b64decode
 
 
 class DbTransfer( object ):
-	def __init__(self, *args, **kwargs ):
-		return( super( DbTransfer, self ).__init__())
 
 	def _checkKey(self, key, export=True):
 		"""
@@ -180,6 +181,9 @@ class DbTransfer( object ):
 				#if isinstance(val, dict) or isinstance(val, list):
 				#	val = pickle.dumps( val )
 				dbEntry[k] = val
+		if dbEntry.key().id():
+			# Ensure the Datastore knows that it's id is in use
+			datastore._GetConnection()._reserve_keys([dbEntry.key()])
 		db.Put( dbEntry )
 
 	@exposed
@@ -366,19 +370,19 @@ class TaskExportKind( CallableTaskBase ):
 
 	def dataSkel(self):
 		modules = ["*"] + listKnownSkeletons()
-		skel = Skeleton( self.kindName )
-		skel["module"] = selectOneBone( descr="Module", values={ x: x for x in modules}, required=True )
-		skel["target"] = stringBone( descr="URL to Target-Application", required=True, defaultValue="https://your-app-id.appspot.com/dbtransfer/storeEntry2" )
-		skel["importkey"] = stringBone( descr="Import-Key", required=True)
+		skel = BaseSkeleton(cloned=True)
+		skel.module = selectOneBone( descr="Module", values={ x: x for x in modules}, required=True )
+		skel.target = stringBone( descr="URL to Target-Application", required=True, defaultValue="https://your-app-id.appspot.com/dbtransfer/storeEntry2" )
+		skel.importkey = stringBone( descr="Import-Key", required=True)
 		return skel
 
 	def execute( self, module=None, target=None, importkey=None, *args, **kwargs ):
 		assert importkey
 		if module == "*":
 			for module in listKnownSkeletons():
-				iterExport( module, target, importkey, None )
+				iterExport(module, target, importkey, None)
 		else:
-			iterExport( module, target, importkey, None )
+			iterExport(module, target, importkey, None)
 
 @callDeferred
 def iterExport( module, target, importKey, cursor=None ):
@@ -440,17 +444,21 @@ class TaskImportKind( CallableTaskBase ):
 
 	def dataSkel(self):
 		modules = ["*"] + listKnownSkeletons()
-		skel = Skeleton( self.kindName )
-		skel["module"] = selectOneBone( descr="Module", values={ x: x for x in modules}, required=True )
-		skel["source"] = stringBone(descr="URL to Source-Application", required=True, defaultValue="https://<your-app-id>.appspot.com/dbtransfer/iterValues2" )
-		skel["exportkey"] = stringBone(descr="Export-Key", required=True, defaultValue="")
+
+		skel = BaseSkeleton(cloned=True)
+
+		skel.module = selectOneBone(descr="Module", values={x: x for x in modules}, required=True)
+		skel.source = stringBone(descr="URL to Source-Application", required=True,
+		                                    defaultValue="https://<your-app-id>.appspot.com/dbtransfer/iterValues2")
+		skel.exportkey = stringBone(descr="Export-Key", required=True, defaultValue="")
+
 		return skel
 
 	def execute( self, module=None, source=None, exportkey=None, *args, **kwargs ):
 		assert exportkey
 		if module == "*":
 			for module in listKnownSkeletons():
-				iterImport( module, source, exportkey, None )
+				iterImport(module, source, exportkey, None)
 			#iterImport( "allergen", source, exportkey, None )
 		else:
 			iterImport( module, source, exportkey, None )

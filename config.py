@@ -20,13 +20,15 @@ conf = {
 
 	"viur.db.caching" : 2, #Cache strategy used by the database. 2: Aggressive, 1: Safe, 0: Off
 	"viur.debug.traceExceptions": False, #If enabled, user-generated exceptions from the server.errors module won't be caught and handled
-	"viur.debug.traceExternalCallRouting": True, #If enabled, ViUR will log which (exposed) function are called from outside with what arguments
-	"viur.debug.traceInternalCallRouting": True, #If enabled, ViUR will log which (internal-exposed) function are called from templates with what arguments
-	"viur.debug.traceQueries": True, #If enabled, we log all datastore queries performed
+	"viur.debug.traceExternalCallRouting": False, #If enabled, ViUR will log which (exposed) function are called from outside with what arguments
+	"viur.debug.traceInternalCallRouting": False, #If enabled, ViUR will log which (internal-exposed) function are called from templates with what arguments
+	"viur.debug.traceQueries": False, #If enabled, we log all datastore queries performed
 	"viur.defaultLanguage": "en", #Unless overridden by the Project: Use english as default language
 	"viur.disableCache": False, #If set to true, the decorator @enableCache from server.cache has no effect
 	"viur.domainLanguageMapping": {},  #Maps Domains to alternative default languages
 
+	"viur.emailHandler": None,  # Allow for setting a custom email handler, like sendgrid. This must point to a function
+								# having equivalent parameters than utils.sendEMail().
 	"viur.emailRecipientOverride": None, #If set, all outgoing emails will be send to this address (overriding the 'dests'-parameter in utils.sendEmail)
 	"viur.emailSenderOverride": None, #If set, this sender will be used, regardless of what the templates advertise as sender
 	"viur.errorHandler": None, #If set, ViUR call this function instead of rendering the viur.errorTemplate if an exception occurs

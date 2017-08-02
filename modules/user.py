@@ -41,7 +41,7 @@ class userSkel(Skeleton):
 
 	# One-Time Password Verification
 	otpid = stringBone(descr="OTP serial", required=False, indexed=True, searchable=True)
-	otpkey = stringBone(descr="OTP hex key", required=False, indexed=True)
+	otpkey = credentialBone(descr="OTP hex key", required=False, indexed=True)
 	otptimedrift = numericBone(descr="OTP time drift", readOnly=True, defaultValue=0)
 
 
@@ -102,18 +102,20 @@ class UserPassword(object):
 		# We do this exactly that way to avoid timing attacks
 
 		# Check if the username matches
-		if len(res[ "name.idx" ]) != len(name.lower()):
+		storedUserName = res.get("name.idx", "")
+		if len(storedUserName) != len(name.lower()):
 			isOkay = False
 		else:
-			for x, y in izip(res[ "name.idx" ], name.lower()):
+			for x, y in izip(storedUserName, name.lower()):
 				if x != y:
 					isOkay = False
 
 		# Check if the password matches
-		if len(res["password"]) != len(passwd):
+		storedPasswordHash = res.get("password", "")
+		if len(storedPasswordHash) != len(passwd):
 			isOkay = False
 		else:
-			for x, y in izip(res["password"], passwd):
+			for x, y in izip(storedPasswordHash, passwd):
 				if x != y:
 					isOkay = False
 
@@ -123,7 +125,7 @@ class UserPassword(object):
 
 		if not isOkay:
 			skel=self.loginSkel()
-			skel["name"].fromClient("name",{"name":name} )
+			skel.fromClient({"name": name, "nomissing": "1"})
 			return self.userModule.render.login(skel, loginFailed=True)
 		else:
 			if not "password_salt" in res.keys(): #Update the password to the new, more secure format
@@ -165,12 +167,12 @@ class UserPassword(object):
 				pass
 			user["changedate"] = datetime.datetime.now()
 			db.Put(user)
-			skel = self.userModule.viewSkel()
-			assert skel.fromDB(user.key())
-			skel["skey"] = baseBone(descr="Skey")
-			skel["skey"] = securitykey.create(60*60*24, userKey=str(user.key()), password=skel["password"])
-			utils.sendEMail([skel["name"]], self.userModule.passwordRecoveryMail, skel)
-			return self.userModule.render.view(skel, self.passwordRecoveryInstuctionsSendTemplate)
+			userSkel = self.userModule.viewSkel().ensureIsCloned()
+			assert userSkel.fromDB(user.key())
+			userSkel.skey = baseBone(descr="Skey")
+			userSkel["skey"] = securitykey.create(60*60*24, userKey=str(user.key()), password=skel["password"])
+			utils.sendEMail([userSkel["name"]], self.userModule.passwordRecoveryMail, userSkel)
+			return self.userModule.render.view({}, self.passwordRecoveryInstuctionsSendTemplate)
 
 	@exposed
 	def verify(self, skey, *args,  **kwargs ):
@@ -248,6 +250,7 @@ class UserPassword(object):
 
 
 class GoogleAccount(object):
+	registrationEnabled = False
 
 	def __init__(self, userModule, modulePath):
 		super(GoogleAccount, self).__init__()
@@ -270,6 +273,10 @@ class GoogleAccount(object):
 				# We'll try again - checking if there's already an user with that email
 				userSkel = addSkel().all().filter("name.idx =", currentUser.email().lower()).getSkel()
 				if not userSkel: # Still no luck - it's a completely new user
+					if not self.registrationEnabled and not users.is_current_user_admin():
+						# Registration is disabled, it's a new user and that user is not admin
+						logging.warning("Denying registration of %s", currentUser.email())
+						raise errors.Forbidden("Registration for new users is disabled")
 					userSkel = addSkel() # We'll add a new user
 				userSkel["uid"] = uid
 				userSkel["name"] = currentUser.email()
@@ -289,20 +296,20 @@ class GoogleAccount(object):
 				else:
 					userSkel["gaeadmin"] = False
 				assert userSkel.toDB()
-			return self.userModule.authenticateUser(userSkel["key"], thirdPartyLogin=True)
+			return self.userModule.continueAuthenticationFlow(self, userSkel["key"])
 		raise errors.Redirect( users.create_login_url( self.modulePath+"/login") )
 
-class Otp2Factor( object ):
+class TimeBasedOTP(object):
 	windowSize = 5
 
 	def __init__(self, userModule, modulePath):
-		super(Otp2Factor, self).__init__()
+		super(TimeBasedOTP, self).__init__()
 		self.userModule = userModule
 		self.modulePath = modulePath
 
 	@classmethod
 	def get2FactorMethodName(*args,**kwargs):
-		return u"X-VIUR-2Factor-Otp"
+		return u"X-VIUR-2FACTOR-TimeBasedOTP"
 
 	def canHandle(self, userKey):
 		user = db.Get(userKey)
@@ -319,7 +326,7 @@ class Otp2Factor( object ):
 								"timestamp": time(),
 								"failures": 0}
 			session.current.markChanged()
-			return self.userModule.render.loginSucceeded(msg="ONE-TIME-PASSWORD")
+			return self.userModule.render.loginSucceeded(msg="X-VIUR-2FACTOR-TimeBasedOTP")
 
 		return None
 
@@ -428,9 +435,9 @@ class User(List):
 	passwordRecoveryMail = "user_password_recovery"
 
 	authenticationProviders = [UserPassword, GoogleAccount]
-	secondFactorProviders = [Otp2Factor]
+	secondFactorProviders = [TimeBasedOTP]
 
-	validAuthenticationMethods = [(UserPassword, Otp2Factor), (UserPassword, None), (GoogleAccount, None)]
+	validAuthenticationMethods = [(UserPassword, TimeBasedOTP), (UserPassword, None), (GoogleAccount, None)]
 
 	adminInfo = {
 		"name": "User",
@@ -515,11 +522,11 @@ class User(List):
 		session.current["_mayBeUserKey"] = str(userKey)
 		session.current.markChanged()
 		for authProvider, secondFactor in self.validAuthenticationMethods:
-			if secondFactor is None:
-				# We allow sign-in without a second factor
-				return self.authenticateUser(userKey)
-			
 			if isinstance(caller, authProvider):
+				if secondFactor is None:
+					# We allow sign-in without a second factor
+					return self.authenticateUser(userKey)
+
 				# This Auth-Request was issued from this authenticationProvider
 				secondFactorProvider = self.secondFactorProviderByClass(secondFactor)
 
@@ -563,7 +570,7 @@ class User(List):
 		
 		del oldSession
 		session.current["user"] = {}
-		
+
 		for key in ["name", "status", "access"]:
 			try:
 				session.current["user"][key] = res[key]
@@ -581,14 +588,28 @@ class User(List):
 
 	@exposed
 	def logout(self, skey="", *args,  **kwargs):
+		"""
+			Implements the logout action. It also terminates the current session (all keys not listed
+			in viur.session.persistentFieldsOnLogout will be lost).
+		"""
 		user = session.current.get("user")
 		if not user:
 			raise errors.Unauthorized()
-
 		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
 
-		session.current["user"] = None
+		self.onLogout(user)
+
+		oldSession = {k: v for k, v in session.current.items()}  # Store all items in the current session
+		session.current.reset()
+
+		# Copy the persistent fields over
+		for k in conf["viur.session.persistentFieldsOnLogout"]:
+			if k in oldSession.keys():
+				session.current[k] = oldSession[k]
+
+		del oldSession
+
 		return self.render.logoutSuccess()
 
 	@exposed
@@ -598,6 +619,9 @@ class User(List):
 	def onLogin(self):
 		usr = self.getCurrentUser()
 		logging.info( "User logged in: %s" % usr["name"])
+
+	def onLogout(self, usr):
+		logging.info( "User logged out: %s" % usr["name"])
 
 	@exposed
 	def edit(self,  *args,  **kwargs):
@@ -615,13 +639,15 @@ class User(List):
 			user = self.getCurrentUser()
 			if user:
 				return super(User, self).view(user["key"], *args, **kwargs)
+			else:
+				raise errors.Unauthorized()
 
 		return super(User, self ).view( key, *args, **kwargs)
 
 	def canView(self, skel):
 		user = self.getCurrentUser()
 		if user:
-			if skel["key"]==user["key"]:
+			if skel["key"] == user["key"]:
 				return True
 
 			if "root" in user["access"] or "user-view" in user["access"]:
@@ -651,20 +677,26 @@ def createNewUserIfNotExists():
 	"""
 		Create a new Admin user, if the userDB is empty
 	"""
-	if "user" in dir(conf["viur.mainApp"]):# We have a user module
-		userMod = getattr(conf["viur.mainApp"], "user")
-		if isinstance( userMod, User ) and "addSkel" in dir(userMod): #Its our user module :)
-			if not db.Query( userMod.addSkel().kindName ).get(): #There's currently no user in the database
+	userMod = getattr(conf["viur.mainApp"], "user", None)
+	if (userMod # We have a user module
+		and isinstance(userMod, User)
+		and "addSkel" in dir(userMod)
+		and "validAuthenticationMethods" in dir(userMod) #Its our user module :)
+		and any([x[0] is UserPassword for x in userMod.validAuthenticationMethods])): #It uses UserPassword login
+			if not db.Query(userMod.addSkel().kindName).get(): #There's currently no user in the database
 				addSkel = skeletonByKind(userMod.addSkel().kindName)() # Ensure we have the full skeleton
 				uname = "admin@%s.appspot.com" % app_identity.get_application_id()
-				pw = utils.generateRandomString( 13 )
+				pw = utils.generateRandomString(13)
 				addSkel["name"] = uname
-				addSkel["status"] = 10 # Ensure its enabled right away
+				addSkel["status"] = 10  # Ensure its enabled right away
 				addSkel["access"] = ["root"]
 				addSkel["password"] = pw
 				try:
 					addSkel.toDB()
-				except:
+				except Exception as e:
+					logging.error("Something went wrong when trying to add admin user %s with Password %s", (uname, pw))
+					logging.exception(e)
 					return
-				logging.warn("ViUR created a new admin-user for you! Username: %s, Password: %s" % (uname,pw) )
-				utils.sendEMailToAdmins( "Your new ViUR password", "ViUR created a new admin-user for you! Username: %s, Password: %s" % (uname,pw) )
+				logging.warning("ViUR created a new admin-user for you! Username: %s, Password: %s" % (uname, pw))
+				utils.sendEMailToAdmins("Your new ViUR password",
+				                        "ViUR created a new admin-user for you! Username: %s, Password: %s" % (uname, pw))

@@ -203,8 +203,7 @@ class textBone( baseBone ):
 	def generageSearchWidget(target,name="TEXT BONE",mode="equals"):
 		return ( {"name":name,"mode":mode,"target":target,"type":"text"} )
 
-
-	def __init__( self, validHtml=__undefinedC__, indexed=False, languages=None, *args, **kwargs ):
+	def __init__( self, validHtml=__undefinedC__, indexed=False, languages=None, maxLength=200000, *args, **kwargs ):
 		baseBone.__init__( self,  *args, **kwargs )
 		if indexed:
 			raise NotImplementedError("indexed=True is not supported on textBones")
@@ -217,6 +216,7 @@ class textBone( baseBone ):
 			raise ValueError("languages must be None or a list of strings ")
 		self.languages = languages
 		self.validHtml = validHtml
+		self.maxLength = maxLength
 		if self.languages:
 			self.defaultValue = LanguageWrapper( self.languages )
 
@@ -237,7 +237,7 @@ class textBone( baseBone ):
 				if k.startswith("%s." % name ):
 					del entity[ k ]
 			for lang in self.languages:
-				if lang in valuesCache[name].keys():
+				if isinstance(valuesCache[name], dict) and lang in valuesCache[name].keys():
 					val = valuesCache[name][ lang ]
 					if not val or (not HtmlSerializer().santinize(val).strip() and not "<img " in val):
 						#This text is empty (ie. it might contain only an empty <p> tag
@@ -291,32 +291,43 @@ class textBone( baseBone ):
 			:returns: None or String
 		"""
 		if self.languages:
-			valuesCache[name] = LanguageWrapper( self.languages )
+			lastError = None
+			valuesCache[name] = LanguageWrapper(self.languages)
 			for lang in self.languages:
-				if "%s.%s" % (name,lang ) in data.keys():
-					val = data[ "%s.%s" % (name,lang ) ]
-					if not self.isInvalid( val ): #Returns None on success, error-str otherwise
-						valuesCache[name][ lang ] = HtmlSerializer( self.validHtml ).santinize( val )
-			if not any( valuesCache[name].values() ):
-				return( "No / invalid values entered" )
-			else:
-				return( None )
+				if "%s.%s" % (name,lang) in data.keys():
+					val = data["%s.%s" % (name,lang)]
+					err = self.isInvalid(val) #Returns None on success, error-str otherwise
+					if not err:
+						valuesCache[name][lang] = HtmlSerializer(self.validHtml).santinize(val)
+					else:
+						lastError = err
+			if not any(valuesCache[name].values()) and not lastError:
+				lastError = "No / invalid values entered"
+			return lastError
 		else:
 			if name in data.keys():
-				value = data[ name ]
+				value = data[name]
 			else:
 				value = None
 			if not value:
-				valuesCache[name] =""
-				return( "No value entered" )
-			if not isinstance( value, str ) and not isinstance( value, unicode ):
+				valuesCache[name] = ""
+				return "No value entered"
+			if not isinstance(value, str) and not isinstance(value, unicode):
 				value = unicode(value)
-			err = self.isInvalid( value )
+			err = self.isInvalid(value)
 			if not err:
-				valuesCache[name] = HtmlSerializer( self.validHtml ).santinize( value )
-				return( None )
-			else:
-				return( "Invalid value entered" )
+				valuesCache[name] = HtmlSerializer(self.validHtml).santinize(value)
+			return err
+
+	def isInvalid( self, value ):
+		"""
+			Returns None if the value would be valid for
+			this bone, an error-message otherwise.
+		"""
+		if value==None:
+			return "No value entered"
+		if len(value) > self.maxLength:
+			return "Maximum length exceeded"
 
 	def getReferencedBlobs(self, valuesCache, name):
 		"""

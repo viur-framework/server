@@ -28,6 +28,7 @@ class relationalBone( baseBone ):
 		As a result, you might see stale data until this task has been finished.
 
 		Example:
+
 			* Entity A references Entity B.
 			* Both have a property "name".
 			* Entity B gets updated (it name changes).
@@ -46,6 +47,7 @@ class relationalBone( baseBone ):
 	             format="$(dest.name)", using=None, *args, **kwargs):
 		"""
 			Initialize a new relationalBone.
+
 			:param kind: KindName of the referenced property.
 			:type kind: String
 			:param module: Name of the modul which should be used to select entities of kind "type". If not set,
@@ -100,10 +102,10 @@ class relationalBone( baseBone ):
 			:return: Our Value (with restored RelSkel and using-Skel)
 		"""
 		value = extjson.loads(val)
-		from server.skeleton import RelSkel, skeletonByKind
+		from server.skeleton import RefSkel, skeletonByKind
 		assert isinstance(value, dict), "Read something from the datastore thats not a dict: %s" % str(type(value))
 
-		relSkel = RelSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
+		relSkel = RefSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
 
 		# !!!ViUR re-design compatibility!!!
 		if not "dest" in value.keys():
@@ -111,7 +113,7 @@ class relationalBone( baseBone ):
 			nvalue["dest"] = value
 			value = nvalue
 
-		if "id" in value["dest"].keys() and not "key" in value["dest"].keys():
+		if "id" in value["dest"].keys() and not("key" in value["dest"].keys() and value["dest"]["key"]):
 			value["dest"]["key"] = value["dest"]["id"]
 			del value["dest"]["id"]
 		# UNTIL HERE!
@@ -276,7 +278,7 @@ class relationalBone( baseBone ):
 		db.Delete( [x for x in db.Query( "viur-relations" ).ancestor( db.Key( id ) ).run( keysOnly=True ) ] )
 
 	def isInvalid( self, key ):
-		return True
+		return False
 
 	def fromClient( self, valuesCache, name, data ):
 		"""
@@ -293,17 +295,20 @@ class relationalBone( baseBone ):
 			:type data: Dict
 			:returns: None or String
 		"""
-		from server.skeleton import RelSkel, skeletonByKind
+		from server.skeleton import RefSkel, skeletonByKind
 
+		oldValues = valuesCache.get(name, None)
 		valuesCache[name] = []
 		tmpRes = {}
+
 		clientPrefix = "%s." % name
+
 		for k, v in data.items():
 			if k.startswith(clientPrefix) or k == name:
 				if k == name:
-					clientPrefix = name
-
-				k = k.replace(clientPrefix, "", 1)
+					k = k.replace(name, "", 1)
+				else:
+					k = k.replace(clientPrefix, "", 1)
 
 				if "." in k:
 					try:
@@ -333,10 +338,11 @@ class relationalBone( baseBone ):
 				else:
 					tmpRes[ idx ][bname] = v
 
-		tmpList = [ (k,v) for k,v in tmpRes.items() ]
+		tmpList = [(k,v) for k,v in tmpRes.items() if "key" in v.keys()]
 		tmpList.sort( key=lambda k: k[0] )
 		tmpList = [{"reltmp":v,"dest":{"key":v["key"]}} for k,v in tmpList]
 		errorDict = {}
+		forceFail = False
 		if not tmpList and self.required:
 			return "No value selected!"
 		for r in tmpList[:]:
@@ -350,33 +356,31 @@ class relationalBone( baseBone ):
 
 				logging.info( "Invalid reference key >%s< detected on bone '%s'",
 							  r["dest"]["key"], name )
-
-				if 0 and isinstance(self._dbValue, dict):
-					if self._dbValue["dest"]["key"]==str(r):
-						entry = self._dbValue
+				if isinstance(oldValues, dict):
+					if oldValues["dest"]["key"]==str(r["dest"]["key"]):
+						entry = oldValues["dest"].serialize()
 						isEntryFromBackup = True
-				elif 0 and isinstance(self._dbValue, list):
-					for dbVal in self._dbValue:
-						if dbVal["dest"]["key"]==str(r):
-							entry = dbVal
+				elif isinstance(oldValues, list):
+					for dbVal in oldValues:
+						if dbVal["dest"]["key"]==str(r["dest"]["key"]):
+							entry = dbVal["dest"].serialize()
 							isEntryFromBackup = True
-
 				if not isEntryFromBackup:
 					if not self.multiple: #We can stop here :/
 						return( "Invalid entry selected" )
-				else:
-					tmpList.remove( r )
-					continue
+					else:
+						tmpList.remove(r)
+						continue
 
 			if not entry or (not isEntryFromBackup and not entry.key().kind()==self.kind): #Entry does not exist or has wrong type (is from another module)
 				if entry:
 					logging.error("I got a key, which kind doesn't match my type! (Got: %s, my type %s)" % ( entry.key().kind(), self.kind))
-				tmpList.remove( r )
+				tmpList.remove(r)
 				continue
 
 			tmp = { k: entry[k] for k in entry.keys() if (k in self.refKeys or any( [ k.startswith("%s." %x) for x in self.refKeys ] ) ) }
 			tmp["key"] = r["dest"]["key"]
-			relSkel = RelSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
+			relSkel = RefSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
 			relSkel.unserialize(tmp)
 			r["dest"] = relSkel
 
@@ -386,21 +390,35 @@ class relationalBone( baseBone ):
 				if not refSkel.fromClient( r["reltmp"] ):
 					for k,v in refSkel.errors.items():
 						errorDict[ "%s.%s.%s" % (name,tmpList.index(r),k) ] = v
+						forceFail = True
 				r["rel"] = refSkel
 			else:
 				r["rel"] = None
 			del r["reltmp"]
 
 		if self.multiple:
+			cleanList = []
+			for item in tmpList:
+				err = self.isInvalid(item)
+				if err:
+					errorDict["%s.%s" % (name, tmpList.index(item))] = err
+				else:
+					cleanList.append(item)
+			if not cleanList:
+				errorDict[name] = "No value selected"
 			valuesCache[name] = tmpList
 		else:
 			if tmpList:
-				valuesCache[name] = tmpList[0]
+				val = tmpList[0]
 			else:
-				valuesCache[name] = None
-
-		if len( errorDict.keys() ):
-			return ReadFromClientError( errorDict, True )
+				val = None
+			err = self.isInvalid(val)
+			if not err:
+				valuesCache[name] = val
+				if val is None:
+					errorDict[name] = "No value selected"
+		if len(errorDict.keys()):
+			return ReadFromClientError(errorDict, forceFail)
 
 	def _rewriteQuery(self, name, skel, dbFilter, rawFilter ):
 		"""
@@ -444,7 +462,7 @@ class relationalBone( baseBone ):
 		return( name, skel, dbFilter, rawFilter )
 
 	def buildDBFilter( self, name, skel, dbFilter, rawFilter, prefix=None ):
-		from server.skeleton import RelSkel, skeletonByKind
+		from server.skeleton import RefSkel, skeletonByKind
 		origFilter = dbFilter.datastoreQuery
 
 		if origFilter is None:  #This query is unsatisfiable
@@ -461,7 +479,7 @@ class relationalBone( baseBone ):
 			if dbFilter.getKind()!="viur-relations" and self.multiple:
 				name, skel, dbFilter, rawFilter = self._rewriteQuery( name, skel, dbFilter, rawFilter )
 
-			relSkel = RelSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
+			relSkel = RefSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
 
 			# Merge the relational filters in
 			for myKey in myKeys:
@@ -677,7 +695,7 @@ class relationalBone( baseBone ):
 				logging.error("Invalid dictionary in updateInplace: %s" % relDict)
 				return
 
-			if "key" in valDict.keys():
+			if "key" in valDict.keys() and valDict["key"]:
 				originalKey = valDict["key"]
 			else:
 				logging.error("Invalid dictionary in updateInplace: %s" % valDict)
@@ -724,11 +742,11 @@ class relationalBone( baseBone ):
 
 
 	def getSearchTags(self, values, key):
-		from server.skeleton import RelSkel
+		from server.skeleton import BaseSkeleton
 
 		def getValues(res, entry):
 			for part in ["dest", "rel"]:
-				if not isinstance(entry.get(part), RelSkel):
+				if not isinstance(entry.get(part), BaseSkeleton):
 					continue
 
 				for k, bone in entry[part].items():
@@ -764,40 +782,40 @@ class relationalBone( baseBone ):
 			:param value: The value that should be assigned. It's type depends on the type of that bone
 			:type boneName: object
 			:param append: If true, the given value is appended to the values of that bone instead of
-			replacing it. Only supported on bones with multiple=True
+				replacing it. Only supported on bones with multiple=True
 			:type append: bool
 			:return: Wherever that operation succeeded or not.
 			:rtype: bool
 		"""
-		from server.skeleton import RelSkel, skeletonByKind
+		from server.skeleton import RefSkel, skeletonByKind
 		def relSkelFromKey(key):
 			if not isinstance(key, db.Key):
 				key = db.Key(encoded=key)
 			if not key.kind() == self.kind:
-				logging.error("I got a key, which kind doesn't match my type! (Got: %s, my type %s)" % ( key().kind(), self.kind))
+				logging.error("I got a key, which kind doesn't match my type! (Got: %s, my type %s)" % (key.kind(), self.kind))
 				return None
 			entity = db.Get(key)
 			if not entity:
 				logging.error("Key %s not found" % str(key))
 				return None
-			relSkel = RelSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
+			relSkel = RefSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
 			relSkel.unserialize(entity)
 			return relSkel
 		if append and not self.multiple:
 			raise ValueError("Bone %s is not multiple, cannot append!" % boneName)
 		if not self.multiple and not self.using:
-			if not (isinstance(value, str) or isinstance(value, db.Key)):
+			if not (isinstance(value, basestring) or isinstance(value, db.Key)):
 				raise ValueError("You must supply exactly one Database-Key to %s" % boneName)
 			realValue = (value, None)
 		elif not self.multiple and self.using:
 			if not isinstance(value, tuple) or len(value) != 2 or \
-				not (isinstance(value[0], str) or isinstance(value[0], db.Key)) or \
+				not (isinstance(value[0], basestring) or isinstance(value[0], db.Key)) or \
 				not isinstance(value[1], self.using):
 					raise ValueError("You must supply a tuple of (Database-Key, relSkel) to %s" % boneName)
 			realValue = value
 		elif self.multiple and not self.using:
-			if not (isinstance(value, str) or isinstance(value, db.Key)) and not (isinstance(value, list)) \
-				and all([isinstance(x, str) or isinstance(x, db.Key) for x in value]):
+			if not (isinstance(value, basestring) or isinstance(value, db.Key)) and not (isinstance(value, list)) \
+				and all([isinstance(x, basestring) or isinstance(x, db.Key) for x in value]):
 					raise ValueError("You must supply a Database-Key or a list hereof to %s" % boneName)
 			if isinstance(value, list):
 				realValue = [(x, None) for x in value]
@@ -805,10 +823,10 @@ class relationalBone( baseBone ):
 				realValue = [(value, None)]
 		else:  # which means (self.multiple and self.using)
 			if not (isinstance(value, tuple) and len(value) == 2 and \
-				        (isinstance(value[0], str) or isinstance(value[0], db.Key)) \
+				        (isinstance(value[0], basestring) or isinstance(value[0], db.Key)) \
 					and isinstance(value[1], self.using)) and not (isinstance(value, list) and
 					all((isinstance(x, tuple) and len(x)==2 and \
-					(isinstance(x[0], str) or isinstance(x[0], db.Key)) \
+					(isinstance(x[0], basestring) or isinstance(x[0], db.Key)) \
 					and isinstance(x[1], self.using) for x in value))):
 						raise ValueError("You must supply (db.Key, RelSkel) or a list hereof to %s" % boneName)
 			if not isinstance(value, list):

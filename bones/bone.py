@@ -193,6 +193,7 @@ class baseBone(object): # One Bone:
 			Parses the searchfilter a client specified in his Request into
 			something understood by the datastore.
 			This function must:
+
 				* Ignore all filters not targeting this bone
 				* Safely handle malformed data in rawFilter
 					(this parameter is directly controlled by the client)
@@ -413,16 +414,16 @@ class baseBone(object): # One Bone:
 		"""
 		pass
 
-	def mergeFrom(self, other):
+	def mergeFrom(self, valuesCache, boneName, otherSkel):
 		"""
 			Clones the values from other into this instance
 		"""
-		if other is None:
+		if getattr(otherSkel, boneName) is None:
 			return
-		if not isinstance( other, type(self) ):
-			logging.error("Ignoring values from conflicting boneType (%s is not a instance of %s)!" % (other, type(self)))
+		if not isinstance(getattr(otherSkel, boneName), type(self)):
+			logging.error("Ignoring values from conflicting boneType (%s is not a instance of %s)!" % (getattr(otherSkel, boneName), type(self)))
 			return
-		self.value = copy.deepcopy( other.value )
+		valuesCache[boneName] = copy.deepcopy(otherSkel.valuesCache.get(boneName, None))
 
 	def setBoneValue(self, valuesCache, boneName, value, append, *args, **kwargs):
 		"""
@@ -437,10 +438,11 @@ class baseBone(object): # One Bone:
 			:param value: The value that should be assigned. It's type depends on the type of that bone
 			:type boneName: object
 			:param append: If true, the given value is appended to the values of that bone instead of
-			replacing it. Only supported on bones with multiple=True
+				replacing it. Only supported on bones with multiple=True
 			:type append: bool
 			:return: Wherever that operation succeeded or not.
 			:rtype: bool
+
 		"""
 		if append:
 			raise ValueError("append is not possible on %s bones" % self.type)

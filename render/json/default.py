@@ -2,7 +2,7 @@
 import json
 from collections import OrderedDict
 from server import errors, request, bones
-from server.skeleton import RelSkel, skeletonByKind
+from server.skeleton import RefSkel, skeletonByKind
 import logging
 
 class DefaultRender(object):
@@ -28,11 +28,12 @@ class DefaultRender(object):
 		# Base bone contents.
 		ret = {
 			"descr": _(bone.descr),
-	                "type": bone.type,
+	        "type": bone.type,
 			"required": bone.required,
 			"params": bone.params,
 			"visible": bone.visible,
-			"readonly": bone.readOnly
+			"readonly": bone.readOnly,
+			"unique": bone.unique
 		}
 
 		if bone.type == "relational" or bone.type.startswith("relational."):
@@ -44,14 +45,13 @@ class DefaultRender(object):
 				boneType = "treedir"
 			else:
 				boneType = "relational"
-
 			ret.update({
 				"type": "%s.%s" % (boneType, bone.kind),
 				"module": bone.module,
 				"multiple": bone.multiple,
 				"format": bone.format,
 				"using": self.renderSkelStructure(bone.using()) if bone.using else None,
-				"relskel": self.renderSkelStructure(RelSkel.fromSkel(skeletonByKind(bone.kind), *bone.refKeys))
+				"relskel": self.renderSkelStructure(RefSkel.fromSkel(skeletonByKind(bone.kind), *bone.refKeys))
 			})
 
 

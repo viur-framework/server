@@ -232,9 +232,9 @@ class TaskHandler:
 			skey = kwargs["skey"]
 		else:
 			skey = ""
-		if not skel.fromClient( kwargs ) or len(kwargs)==0 or skey=="" or ("bounce" in list(kwargs.keys()) and kwargs["bounce"]=="1"):
-			return( self.render.add( skel ) )
-		if not securitykey.validate( skey ):
+		if len(kwargs)==0 or skey=="" or not skel.fromClient(kwargs) or ("bounce" in list(kwargs.keys()) and kwargs["bounce"]=="1"):
+			return self.render.add( skel )
+		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
 		task.execute( **skel.getValues() )
 		return self.render.addItemSuccess( skel )
@@ -271,7 +271,10 @@ def callDeferred( func ):
 			req = None
 		if req is not None and "HTTP_X_APPENGINE_TASKRETRYCOUNT".lower() in [x.lower() for x in os.environ.keys()] and not "DEFERED_TASK_CALLED" in dir( req ): #This is the deferred call
 			req.DEFERED_TASK_CALLED = True #Defer recursive calls to an deferred function again.
-			return( func( self, *args, **kwargs ) )
+			if self is __undefinedFlag_:
+				return func(*args, **kwargs)
+			else:
+				return func(self, *args, **kwargs)
 		else:
 			try:
 				funcPath = "%s/%s" % (self.modulePath, func.func_name )

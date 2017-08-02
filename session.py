@@ -180,10 +180,6 @@ class GaeSession:
 		"""
 		if self.changed:
 			serialized = base64.b64encode( pickle.dumps(self.session, protocol=pickle.HIGHEST_PROTOCOL ) )
-			if len(serialized)>620000 and len(serialized)<=920000:
-				logging.warning("Your session is very large (%s bytes)! It cannot be larger than 900KB!" % len( serialized ) )
-			elif len(serialized)>920000:
-				logging.critical("Your session stores too much data! Expect failure!")
 			self.getSessionKey( req )
 			# Get the current user id
 			userid = None
@@ -273,17 +269,16 @@ class GaeSession:
 
 			:warning: Everything (except the current language) is flushed.
 		"""
-		try:
-			lang = self.session[ "language" ]
-		except:
-			lang = None
+		lang = self.session.get("language")
+		if self.key:
+			db.Delete(db.Key.from_path(self.kindName, self.key))
 		self.key = None
 		self.sslKey = None
 		self.sessionSecurityKey = None
 		self.changed = True
 		self.session = {}
 		if lang:
-			self.session[ "language" ] = lang
+			self.session["language"] = lang
 			
 	def getSessionKey( self, req=None ):
 		"""

@@ -66,7 +66,7 @@ class dateBone( baseBone ):
 			:param time: Should this bone contain time information?
 			:type time: bool
 			:param localize: Automatically convert this time into the users timezone? Only valid if this bone
-                contains date and time-information!
+                                contains date and time-information!
 			:type localize: bool
 		"""
 		baseBone.__init__( self,  *args,  **kwargs )
@@ -98,69 +98,81 @@ class dateBone( baseBone ):
 			:type data: dict
 			:returns: str or None
 		"""
-		if name in data.keys():
-			value = data[ name ]
-		else:
+		rawValue = data.get(name, None)
+		if not rawValue:
 			value = None
-		valuesCache[name] = None
-		if str( value ).replace("-",  "",  1).replace(".","",1).isdigit():
-			if int(value) < -1*(2**30) or int(value)>(2**31)-2:
-				return( "Invalid value entered" )
-			valuesCache[name] = ExtendedDateTime.fromtimestamp( float(value) )
-			return( None )
+		elif unicode(rawValue).replace("-",  "",  1).replace(".","",1).isdigit():
+			if int(rawValue) < -1*(2**30) or int(rawValue)>(2**31)-2:
+				value = False  # its invalid
+			else:
+				value = ExtendedDateTime.fromtimestamp( float(rawValue) )
 		elif not self.date and self.time:
 			try:
-				if str( value ).count(":")>1:
-					(hour, minute, second) = [int(x.strip()) for x in str( value ).split(":")]
-					valuesCache[name] = time( hour=hour, minute=minute, second=second )
-					return( None )
-				elif str( value ).count(":")>0:
-					(hour, minute) = [int(x.strip()) for x in str( value ).split(":")]
-					valuesCache[name] = time( hour=hour, minute=minute )
-					return( None )
-				elif str( value ).replace("-",  "",  1).isdigit():
-					valuesCache[name] = time( second=int(value) )
-					return( None )
+				if unicode(rawValue).count(":")>1:
+					(hour, minute, second) = [int(x.strip()) for x in unicode(rawValue).split(":")]
+					value = time(hour=hour, minute=minute, second=second)
+				elif unicode(rawValue).count(":")>0:
+					(hour, minute) = [int(x.strip()) for x in unicode(rawValue).split(":")]
+					value = time(hour=hour, minute=minute)
+				elif unicode(rawValue).replace("-",  "",  1).isdigit():
+					value = time(second=int(rawValue))
+				else:
+					value = False  # its invalid
 			except:
-				return( "Invalid value entered" )
-			return( False )
-		elif str( value ).lower().startswith("now"):
+				value = False
+		elif unicode(rawValue).lower().startswith("now"):
 			tmpRes = ExtendedDateTime.now()
-			if len( str( value ) )>4:
+			if len(unicode(rawValue))>4:
 				try:
-					tmpRes += timedelta( seconds= int( str(value)[3:] ) )
+					tmpRes += timedelta(seconds= int(unicode(rawValue)[3:]))
 				except:
 					pass
-			valuesCache[name] = tmpRes
-			return( None )
+			value = tmpRes
 		else:
 			try:
-				if " " in value: # Date with time
-					try: #Times with seconds
-						if "-" in value: #ISO Date
-							valuesCache[name] = ExtendedDateTime.strptime(str( value ), "%Y-%m-%d %H:%M:%S")
-						elif "/" in value: #Ami Date
-							valuesCache[name] = ExtendedDateTime.strptime(str( value ), "%m/%d/%Y %H:%M:%S")
-						else: # European Date
-							valuesCache[name] = ExtendedDateTime.strptime(str( value ), "%d.%m.%Y %H:%M:%S")
+				if " " in rawValue:  # Date with time
+					try:  # Times with seconds
+						if "-" in rawValue:  # ISO Date
+							value = ExtendedDateTime.strptime(unicode(rawValue), "%Y-%m-%d %H:%M:%S")
+						elif "/" in rawValue:  # Ami Date
+							value = ExtendedDateTime.strptime(unicode(rawValue), "%m/%d/%Y %H:%M:%S")
+						else:  # European Date
+							value = ExtendedDateTime.strptime(unicode(rawValue), "%d.%m.%Y %H:%M:%S")
 					except:
-						if "-" in value: #ISO Date
-							valuesCache[name] = ExtendedDateTime.strptime(str( value ), "%Y-%m-%d %H:%M")
-						elif "/" in value: #Ami Date
-							valuesCache[name] = ExtendedDateTime.strptime(str( value ), "%m/%d/%Y %H:%M")
-						else: # European Date
-							valuesCache[name] = ExtendedDateTime.strptime(str( value ), "%d.%m.%Y %H:%M")
+						if "-" in rawValue:  # ISO Date
+							value = ExtendedDateTime.strptime(unicode(rawValue), "%Y-%m-%d %H:%M")
+						elif "/" in rawValue:  # Ami Date
+							value = ExtendedDateTime.strptime(unicode(rawValue), "%m/%d/%Y %H:%M")
+						else:  # European Date
+							value = ExtendedDateTime.strptime(unicode(rawValue), "%d.%m.%Y %H:%M")
 				else:
-					if "-" in value: #ISO Date
-						valuesCache[name] = ExtendedDateTime.strptime(str( value ), "%Y-%m-%d")
-					elif "/" in value: #Ami Date
-						valuesCache[name] = ExtendedDateTime.strptime(str( value ), "%m/%d/%Y")
-					else:
-						valuesCache[name] =ExtendedDateTime.strptime(str( value ), "%d.%m.%Y")
-				return( None )
+					if "-" in rawValue:  # ISO (Date only)
+						value = ExtendedDateTime.strptime(unicode(rawValue), "%Y-%m-%d")
+					elif "/" in rawValue:  # Ami (Date only)
+						value = ExtendedDateTime.strptime(unicode(rawValue), "%m/%d/%Y")
+					else:  # European (Date only)
+						value =ExtendedDateTime.strptime(unicode(rawValue), "%d.%m.%Y")
 			except:
-				return( "Invalid value entered" )
-			return( "Invalid value entered" )
+				value = False  # its invalid
+		if value is False:
+			return "Invalid value entered"
+		else:
+			err = self.isInvalid(value)
+			if not err:
+				valuesCache[name] = value
+				if value is None:
+					return "No value entered"
+			return err
+
+	def isInvalid(self, value):
+		"""
+			Ensure that year is >= 1900
+			Otherwise strftime will break later on.
+		"""
+		if isinstance(value, datetime):
+			if value.year < 1900:
+				return "Year must be >= 1900"
+		return super(dateBone, self).isInvalid(value)
 
 	def guessTimeZone(self):
 		"""
@@ -169,22 +181,25 @@ class dateBone( baseBone ):
 		"""
 		timeZone = "UTC" # Default fallback
 		try:
-			#Check the local cache first
+			# Check the local cache first
 			if "timeZone" in request.current.requestData().keys():
 				return( request.current.requestData()["timeZone"] )
 			headers = request.current.get().request.headers
 			if "X-Appengine-Country" in headers.keys():
 				country = headers["X-Appengine-Country"]
-			else: # Maybe local development Server - no way to guess it here
+			else:  # Maybe local development Server - no way to guess it here
 				return( timeZone )
 			tzList = pytz.country_timezones[ country ]
-		except: #Non-User generated request (deferred call; task queue etc), or no pytz
+		except:  # Non-User generated request (deferred call; task queue etc), or no pytz
 			return( timeZone )
-		if len( tzList ) == 1: # Fine - the country has exactly one timezone
+		if len( tzList ) == 1:  # Fine - the country has exactly one timezone
 			timeZone = tzList[ 0 ]
-		elif country.lower()=="us": # Fallback for the US
+		elif country.lower()=="us":  # Fallback for the US
 			timeZone = "EST"
-		else: #The user is in a Country which has more than one timezone
+		elif country.lower() == "de":  # For some freaking reason Germany is listed with two timezones
+			timeZone = "Europe/Berlin"
+		else:  # The user is in a Country which has more than one timezone
+			# Fixme: Is there any equivalent of EST for australia?
 			pass
 		request.current.requestData()["timeZone"] = timeZone #Cache the result
 		return( timeZone ) 
@@ -192,7 +207,7 @@ class dateBone( baseBone ):
 	def readLocalized(self, value ):
 		"""Read a (probably localized Value) from the Client and convert it back to UTC"""
 		res = value
-		if 1 or not self.localize or not value or not isinstance( value, datetime) :
+		if not self.localize or not value or not isinstance( value, datetime) :
 			return( res )
 		#Nomalize the Date to UTC
 		timeZone = self.guessTimeZone()
