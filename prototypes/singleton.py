@@ -20,7 +20,6 @@ class Singleton(BasicApplication):
 	"""
 
 	accessRights = ["edit", "view"]                 # Possible access rights for this app
-	amendBones = []
 
 	def adminInfo(self):
 		return {
@@ -159,7 +158,7 @@ class Singleton(BasicApplication):
 
 		if (len(kwargs) == 0 # no data supplied
 		    or skey == "" #no skey provided
-			or not skel.fromClient(kwargs, amend=self.amendBones) # failure on reading into the bones
+			or not skel.fromClient(kwargs) # failure on reading into the bones
 			or ("bounce" in kwargs.keys() and kwargs["bounce"] == "1")): # review before changing
 			return self.render.edit( skel )
 

@@ -341,7 +341,7 @@ class BaseSkeleton(object):
 			raise ValueError("%s is no valid bone on this skeleton (%s)" % (boneName, str(self)))
 		return bone.setBoneValue(self.valuesCache, boneName, value, append)
 
-	def fromClient(self, data, amend = None):
+	def fromClient(self, data):
 		"""
 			Load supplied *data* into Skeleton.
 
@@ -367,6 +367,7 @@ class BaseSkeleton(object):
 		# Check if amending can be performed.
 		# Amending allows for updating explicit bones without touching the bones not involved.
 		bones = None
+		amend = [boneName for boneName, boneInstance in self.items() if boneInstance.amendable]
 
 		if amend:
 			# Amending is allowed, when the parameters in data match only exactly those bones which are allowed
@@ -584,7 +585,8 @@ class Skeleton(BaseSkeleton):
 
 		def txnUpdate(key, mergeFrom, clearUpdateTag):
 			blobList = set()
-			skel = type(mergeFrom)()
+			skel = mergeFrom.clone()
+
 			# Load the current values from Datastore or create a new, empty db.Entity
 			if not key:
 				dbObj = db.Entity(skel.kindName)
@@ -631,6 +633,11 @@ class Skeleton(BaseSkeleton):
 					"viur_delayed_update_tag"] = time()  # Mark this entity as dirty, so the background-task will catch it up and update its references.
 			dbObj.set_unindexed_properties(unindexed_properties)
 			dbObj = skel.preProcessSerializedData(dbObj)
+
+			logging.info(dbObj.keys())
+			raise ValueError()
+
+
 			try:
 				ourKey = str(dbObj.key())
 			except:  # Its not an update but an insert, no key yet

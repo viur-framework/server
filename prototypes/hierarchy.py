@@ -47,7 +47,6 @@ class Hierarchy(BasicApplication):
 	"""
 
 	accessRights = ["add", "edit", "view", "delete"]  # Possible access rights for this app
-	amendBones = []
 
 	def adminInfo(self):
 		return {
@@ -589,7 +588,7 @@ class Hierarchy(BasicApplication):
 		if (len(kwargs) == 0  # no data supplied
 		    or skey == ""  # no security key
 		    or not request.current.get().isPostRequest  # failure if not using POST-method
-		    or not skel.fromClient(kwargs, self.amendBones)  # failure on reading into the bones
+		    or not skel.fromClient(kwargs)  # failure on reading into the bones
 		    or ("bounce" in list(kwargs.keys()) and kwargs["bounce"] == "1")  # review before changing
 		    ):
 			return self.render.edit(skel)

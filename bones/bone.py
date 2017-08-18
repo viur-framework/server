@@ -51,7 +51,8 @@ class baseBone(object): # One Bone:
 	#		return boneFactory(cls, args, kwargs)
 
 	def __init__(	self, descr="", defaultValue=None, required=False, params=None, multiple=False,
-			indexed=False, searchable=False, vfunc=None, readOnly=False, visible=True, unique=False, **kwargs ):
+			indexed=False, searchable=False, vfunc=None, readOnly=False, visible=True, unique=False,
+			amendable=False, **kwargs ):
 		"""
 			Initializes a new Bone.
 
@@ -106,6 +107,8 @@ class baseBone(object): # One Bone:
 		self.readOnly = readOnly
 		self.visible = visible
 		self.unique = unique
+		self.amendable = amendable
+
 		self.idx = _boneCounter.count
 		if "canUse" in dir( self ):
 			raise AssertionError("canUse is deprecated! Use isInvalid instead!")
