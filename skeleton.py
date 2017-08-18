@@ -585,7 +585,7 @@ class Skeleton(BaseSkeleton):
 
 		def txnUpdate(key, mergeFrom, clearUpdateTag):
 			blobList = set()
-			skel = mergeFrom.clone()
+			skel = type(mergeFrom)()
 
 			# Load the current values from Datastore or create a new, empty db.Entity
 			if not key:
@@ -633,10 +633,6 @@ class Skeleton(BaseSkeleton):
 					"viur_delayed_update_tag"] = time()  # Mark this entity as dirty, so the background-task will catch it up and update its references.
 			dbObj.set_unindexed_properties(unindexed_properties)
 			dbObj = skel.preProcessSerializedData(dbObj)
-
-			logging.info(dbObj.keys())
-			raise ValueError()
-
 
 			try:
 				ourKey = str(dbObj.key())
