@@ -4,8 +4,9 @@ from server import db
 from google.appengine.api import search
 import json
 from time import time
-from datetime import datetime
+
 import logging
+
 
 class relationalBone( baseBone ):
 	"""
@@ -357,15 +358,15 @@ class relationalBone( baseBone ):
 					logging.warning( "Invalid filtering! %s is not in parentKeys of RelationalBone %s!" % (k,name) )
 					raise RuntimeError()
 				dbFilter.filter( "src.%s" % k, v )
-			orderList = []
-			for k,d in origSortOrders: #Merge old sort orders in
-				if not k in self.parentKeys:
-					logging.warning( "Invalid filtering! %s is not in parentKeys of RelationalBone %s!" % (k,name) )
-					raise RuntimeError()
-				orderList.append( ("src.%s" % k, d) )
-			if orderList:
-				dbFilter.order( *orderList )
-		return( name, skel, dbFilter, rawFilter )
+		orderList = []
+		for k,d in origSortOrders: #Merge old sort orders in
+			if not k in self.parentKeys:
+				logging.warning("Invalid filtering! %s is not in parentKeys of RelationalBone %s!" % (k,name))
+				raise RuntimeError()
+			orderList.append( ("src.%s" % k, d) )
+		if orderList:
+			dbFilter.order( *orderList )
+		return name, skel, dbFilter, rawFilter
 
 	def buildDBFilter( self, name, skel, dbFilter, rawFilter ):
 		origFilter = dbFilter.datastoreQuery
