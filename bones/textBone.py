@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from server.bones import baseBone
 from time import time
-import HTMLParser, htmlentitydefs 
+import HTMLParser, htmlentitydefs
 from server import db
 from server.utils import markFileForDeletion
 from server.config import conf
@@ -28,11 +28,11 @@ _defaultTags = {
 	"singleTags": ["br", "img", "hr"]  # List of tags, which don't have a corresponding end tag
 }
 
-
 class HtmlSerializer(HTMLParser.HTMLParser):  # html.parser.HTMLParser
 	def __init__(self, validHtml=None):
 		global _defaultTags
 		HTMLParser.HTMLParser.__init__(self)
+
 		self.result = ""  # The final result that will be returned
 		self.openTagsList = []  # List of tags that still need to be closed
 		self.tagCache = []  # Tuple of tags that have been processed but not written yet
@@ -77,8 +77,10 @@ class HtmlSerializer(HTMLParser.HTMLParser):  # html.parser.HTMLParser
 			styles = None
 			classes = None
 			for k, v in attrs:
+
 				k = k.strip()
 				v = v.strip()
+
 				if any([c in k for c in filterChars]) or any([c in v for c in filterChars]):
 					# Either the key or the value contains a character that's not supposed to be there
 					continue
@@ -96,6 +98,7 @@ class HtmlSerializer(HTMLParser.HTMLParser):  # html.parser.HTMLParser
 					if not (checker.startswith("http://") or checker.startswith("https://") or \
 						checker.startswith("/")):
 						continue
+
 				if not tag in self.validHtml["validAttrs"].keys() or not k in \
 					self.validHtml["validAttrs"][tag]:
 					# That attribute is not valid on this tag
@@ -104,6 +107,7 @@ class HtmlSerializer(HTMLParser.HTMLParser):  # html.parser.HTMLParser
 					cacheTagStart += ' %s="%s"' % (k, v)
 				if tag == "a" and k == "target" and v.lower() == "_blank":
 					isBlankTarget = True
+
 			if styles:
 				syleRes = {}
 				for s in styles:
@@ -191,8 +195,6 @@ class HtmlSerializer(HTMLParser.HTMLParser):  # html.parser.HTMLParser
 		self.cleanup()
 		return self.result
 
-
-
 class textBone( baseBone ):
 	class __undefinedC__:
 		pass
@@ -237,7 +239,7 @@ class textBone( baseBone ):
 				if k.startswith("%s." % name ):
 					del entity[ k ]
 			for lang in self.languages:
-				if isinstance(valuesCache[name], dict) and lang in valuesCache[name].keys():
+				if isinstance(valuesCache[name], dict) and lang in valuesCache[name]:
 					val = valuesCache[name][ lang ]
 					if not val or (not HtmlSerializer().santinize(val).strip() and not "<img " in val):
 						#This text is empty (ie. it might contain only an empty <p> tag
@@ -246,7 +248,7 @@ class textBone( baseBone ):
 		else:
 			entity.set( name, valuesCache[name], self.indexed )
 		return( entity )
-		
+
 	def unserialize( self, valuesCache, name, expando ):
 		"""
 			Inverse of serialize. Evaluates whats
@@ -259,22 +261,22 @@ class textBone( baseBone ):
 			:type expando: :class:`db.Entity`
 		"""
 		if not self.languages:
-			if name in expando.keys():
+			if name in expando:
 				valuesCache[name] = expando[ name ]
 		else:
 			valuesCache[name] = LanguageWrapper( self.languages )
 			for lang in self.languages:
-				if "%s.%s" % ( name, lang ) in expando.keys():
+				if "%s.%s" % ( name, lang ) in expando:
 					valuesCache[name][ lang ] = expando[ "%s.%s" % ( name, lang ) ]
 			if not valuesCache[name].keys(): #Got nothing
-				if name in expando.keys(): #Old (non-multi-lang) format
+				if name in expando: #Old (non-multi-lang) format
 					valuesCache[name][ self.languages[0] ] = expando[ name ]
 				for lang in self.languages:
-					if not lang in valuesCache[name].keys() and "%s_%s" % ( name, lang ) in expando.keys():
+					if not lang in valuesCache[name] and "%s_%s" % ( name, lang ) in expando:
 						valuesCache[name][ lang ] = expando[ "%s_%s" % ( name, lang ) ]
 
 		return( True )
-	
+
 	def fromClient( self, valuesCache, name, data ):
 		"""
 			Reads a value from the client.
@@ -283,7 +285,7 @@ class textBone( baseBone ):
 			Otherwise our previous value is
 			left unchanged and an error-message
 			is returned.
-			
+
 			:param name: Our name in the skeleton
 			:type name: String
 			:param data: *User-supplied* request-data
@@ -294,7 +296,7 @@ class textBone( baseBone ):
 			lastError = None
 			valuesCache[name] = LanguageWrapper(self.languages)
 			for lang in self.languages:
-				if "%s.%s" % (name,lang) in data.keys():
+				if "%s.%s" % (name,lang) in data:
 					val = data["%s.%s" % (name,lang)]
 					err = self.isInvalid(val) #Returns None on success, error-str otherwise
 					if not err:
@@ -305,7 +307,7 @@ class textBone( baseBone ):
 				lastError = "No / invalid values entered"
 			return lastError
 		else:
-			if name in data.keys():
+			if name in data:
 				value = data[name]
 			else:
 				value = None
@@ -338,7 +340,7 @@ class textBone( baseBone ):
 		if self.languages:
 			if valuesCache[name]:
 				for lng in self.languages:
-					if lng in valuesCache[name].keys():
+					if lng in valuesCache[name]:
 						val = valuesCache[name][ lng ]
 						if not val:
 							continue
@@ -383,8 +385,8 @@ class textBone( baseBone ):
 					if key and key not in res and len(key)>3:
 						res.append( key.lower() )
 		return( res )
-		
-	def getSearchDocumentFields(self, valuesCache, name):
+
+	def getSearchDocumentFields(self, valuesCache, name, prefix = ""):
 		"""
 			Returns a list of search-fields (GAE search API) for this bone.
 		"""
@@ -392,13 +394,13 @@ class textBone( baseBone ):
 			assert isinstance(valuesCache[name], dict), "The value shall already contain a dict, something is wrong here."
 
 			if self.validHtml:
-				return [search.HtmlField(name=name, value=unicode( valuesCache[name].get(lang, "")), language=lang)
+				return [search.HtmlField(name=prefix + name, value=unicode(valuesCache[name].get(lang, "")), language=lang)
 				        for lang in self.languages]
 			else:
-				return [search.TextField(name=name, value=unicode( valuesCache[name].get(lang, "")), language=lang)
+				return [search.TextField(name=prefix + name, value=unicode(valuesCache[name].get(lang, "")), language=lang)
 				        for lang in self.languages]
 		else:
 			if self.validHtml:
-				return [search.HtmlField( name=name, value=unicode(valuesCache[name]))]
+				return [search.HtmlField(name=prefix + name, value=unicode(valuesCache[name]))]
 			else:
-				return [search.TextField( name=name, value=unicode(valuesCache[name]))]
+				return [search.TextField(name=prefix + name, value=unicode(valuesCache[name]))]
