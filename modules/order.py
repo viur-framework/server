@@ -85,7 +85,7 @@ class Order( List ):
 		"name": "Orders", #Name of this module, as shown in ViUR Admin (will be translated at runtime)
 		"handler": "list.order",  #Which handler to invoke
 		"icon": "icons/modules/cart.svg", #Icon for this modul
-		"filter":{"orderby":"creationdate","orderdir":1,"state_complete":"1" }, 
+		"filter":{"orderby":"creationdate","orderdir":1,"state_complete":"1" },
 		"columns":["idx","bill_firstname","bill_lastname","amt","price","creationdate"],
 		"views" : [	{ "name": u"Not shipped", "filter":{"state_archived": "0",  "state_complete":"1", "state_send":"0", "state_canceled":"0", "orderby":"creationdate","orderdir":1 }, "icon":"icons/status/order_not_shipped.svg", "columns":["idx","bill_firstname","bill_lastname","amt","price","creationdate"]},
 				{ "name": u"Unpaid", "filter":{"state_archived": "0", "state_complete":"1", "state_payed":"0","state_canceled":"0", "orderby":"creationdate","orderdir":1}, "icon":"icons/status/order_unpaid.svg", "columns":["idx","bill_firstname","bill_lastname","amt","price","creationdate"] },
@@ -113,7 +113,7 @@ class Order( List ):
 	def setState(self, orderKey, state, removeState = False):
 		"""
 			Set a status on the given order.
-			
+
 			:param orderKey: Key of the order
 			:type orderKey: str
 
@@ -153,16 +153,16 @@ class Order( List ):
 		for state in self.states:
 			stateName = "state_%s" % state
 
-			if stateName in dbObj.keys() and str( dbObj[ stateName ] )=="1":
+			if stateName in dbObj and str( dbObj[ stateName ] )=="1":
 				res.append( state )
 
 		return res
-	
+
 	def setComplete( self, orderKey ):
 		"""
 			Mark an order as complete.
 			May be overridden to hook this event.
-		
+
 			:param orderKey: Order to mark completed.
 			:type orderKey: str
 
@@ -189,7 +189,7 @@ class Order( List ):
 		"""
 			Marks an order to be ready to send.
 			May be overridden to hook this event.
-			
+
 			:param orderKey: Order to mark
 			:type orderKey: str
 		"""
@@ -237,7 +237,7 @@ class Order( List ):
 		self.setState( orderKey, "rts", True )
 		self.sendOrderCanceledEMail( orderKey )
 		return( True )
-	
+
 	def setArchived(self, orderKey ):
 		"""
 			Marks an order as archived.
@@ -268,7 +268,7 @@ class Order( List ):
 		:type orderKey: str
 		"""
 		pass
-	
+
 	def sendOrderPayedEMail(self, orderKey):
 		"""
 		Hook event to send an email when the given order is marked as paid.
@@ -277,7 +277,7 @@ class Order( List ):
 		:type orderKey: str
 		"""
 		pass
-	
+
 	def sendOrderCanceledEMail(self, orderKey):
 		"""
 		Hook event to send an email when the given order is marked as cancelled.
@@ -286,7 +286,7 @@ class Order( List ):
 		:type orderKey: str
 		"""
 		pass
-	
+
 	def sendOrderArchivedEMail(self, orderKey):
 		"""
 		Hook event to send an email when the given order is archived.
@@ -361,7 +361,7 @@ class Order( List ):
 		This step updates the current order and copies the values from
 		billAddressSkel to shippingAddressSkel if extrashippingaddress is
 		False.
-		
+
 		:param step: Current step within the ordering process
 		:type step: int
 
@@ -375,7 +375,7 @@ class Order( List ):
 			for name, bone in billSkel.items():
 				if name.startswith( "bill_" ):
 					name = name.replace( "bill_", "shipping_" )
-					if name in billSkel.keys():
+					if name in billSkel:
 						billSkel[ name ].value = bone.value
 
 			billSkel.toDB()
@@ -385,7 +385,7 @@ class Order( List ):
 		"""
 		Calculates the final price for this order.
 		This function *must* be called before any attempt is made to start a payment process.
-		
+
 
 		:param step: Current step within the ordering process
 		:type step: int
@@ -419,7 +419,7 @@ class Order( List ):
 				pp = self.initializedPaymentProviders[order["payment_type"]]
 				pp.startProcessing( step, orderKey )
 				#getattr( self, "paymentProvider_%s" % order.payment_type.value )( step, orderKey )
-	
+
 	def paymentProvider_pod( self, step, orderKey ):
 		"""
 			If Pay-On-Delivery is choosen, immediately mark this order as ready to ship
@@ -439,10 +439,10 @@ class Order( List ):
 		:rtype: list of tuple
 		"""
 		return []
-	
+
 	def billSequenceAvailable( self, orderKey ):
 		self.sendOrderCompleteEMail( orderKey )
-	
+
 	@callDeferred
 	def assignBillSequence( self, orderKey ):
 		"""
@@ -476,11 +476,11 @@ class Order( List ):
 	def orderStep_rebuildSearchIndex(self, step, orderKey, *args, **kwargs ):
 		"""
 			This rewrites the order after its completion.
-			
+
 			As each step has its own (tiny) skeleton, the searchIndex saved is incomplete.
 			This loads the order using the (hopefully complete) viewSkel and saves it back,
 			so that it is ensuring a complete searchIndex.
-			
+
 			Not a transaction, do not defer!
 		"""
 		skel = self.viewSkel()
@@ -488,7 +488,7 @@ class Order( List ):
 			raise AssertionError()
 
 		skel.toDB()
-	
+
 	def orderStep_resetCart(self, step, orderKey, *args, **kwargs ):
 		"""
 			Clears the cart (if any) after the checkout
@@ -496,7 +496,7 @@ class Order( List ):
 		"""
 		session.current["cart_products"] = None
 		session.current.markChanged()
-	
+
 	def getSkelByName(self, name, orderKey):
 		"""
 			Returns a skeleton for the given Name.
@@ -569,7 +569,7 @@ class Order( List ):
 	def getBillPdf(self, orderKey):
 		"""
 			Should be overridden to return the bill (as pdf) for the given order.
-			
+
 			:type orderKey: str
 			:param orderKey: Order, for which the the bill should be generated.
 
@@ -581,7 +581,7 @@ class Order( List ):
 	def getDeliveryNotePdf(self, orderKey ):
 		"""
 			Should be overridden to return the delivery note (as pdf) for the given order.
-			
+
 			:type orderKey: str
 			:param orderKey: Order, for which the the bill should be generated.
 
@@ -720,12 +720,12 @@ class Order( List ):
 				except ReturnHtmlException as e:
 					return( e.html )
 
-			if "requiresSecurityKey" in currentStep.keys() and currentStep["requiresSecurityKey"] :
+			if "requiresSecurityKey" in currentStep and currentStep["requiresSecurityKey"] :
 				if not securitykey.validate( skey ):
 					raise errors.PreconditionFailed()
 				pass
 
-			if "mainHandler" in currentStep.keys():
+			if "mainHandler" in currentStep:
 
 				if currentStep["mainHandler"]["action"] == "edit":
 					skel = self.getSkelByName( currentStep["mainHandler"]["skeleton"], str(orderKey) )
@@ -747,7 +747,7 @@ class Order( List ):
 					if res:
 						return res
 
-			if "postHandler" in currentStep.keys():
+			if "postHandler" in currentStep:
 				currentStep["postHandler"]( self, step, str(orderKey), *args, **kwargs )
 
 			session.current["order_"+myKindName]["completedSteps"].append( step )
