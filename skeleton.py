@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 
-from server import db, utils, conf, errors
-from server.bones import baseBone, boneFactory, dateBone, selectOneBone, relationalBone, stringBone
-from server.tasks import CallableTask, CallableTaskBase, callDeferred
+import copy
+import inspect
+import logging
+import os
+import sys
 from collections import OrderedDict
 from threading import local
 from time import time
-import inspect, os, sys, logging, copy
+
 from google.appengine.api import search
+from server import db, utils, errors
+from server.bones import baseBone, dateBone, selectOneBone, stringBone
+from server.tasks import CallableTask, CallableTaskBase, callDeferred
 
 try:
 	import pytz
@@ -21,6 +26,7 @@ class BoneCounter(local):
 _boneCounter = BoneCounter()
 
 __undefindedC__ = object()
+
 
 class MetaBaseSkel(type):
 	"""
@@ -44,12 +50,14 @@ class MetaBaseSkel(type):
 		MetaBaseSkel._allSkelClasses.add(cls)
 		super(MetaBaseSkel, cls).__init__(name, bases, dct)
 
+
 def skeletonByKind(kindName):
 	if not kindName:
 		return None
 
 	assert kindName in MetaBaseSkel._skelCache, "Unknown skeleton '%s'" % kindName
 	return MetaBaseSkel._skelCache[kindName]
+
 
 def listKnownSkeletons():
 	return list(MetaBaseSkel._skelCache.keys())[:]
@@ -412,17 +420,24 @@ class BaseSkeleton(object):
 		return( complete )
 
 	def refresh(self):
-		"""
-			Refresh the bones current content.
+		"""Refresh the bones' current content.
 
-			This function causes a refresh of all relational bones and their associated
-			information.
+		This function causes a refresh of all relational bones and their associated
+		information.
+
+		:returns: True if any of relational based bones returns True on refresh, otherwise False
+		:rtype: bool
 		"""
-		for key,bone in self.items():
-			if not isinstance( bone, baseBone ):
-				continue
-			if "refresh" in dir( bone ):
-				bone.refresh( self.valuesCache, key, self )
+
+		refreshed = False
+		for key, bone in self.items():
+			try:
+				bone_refreshed = bone.refresh(self.valuesCache, key, self)
+				if bone_refreshed:
+					refreshed = True
+			except Exception as err:
+				logging.exception(err)
+		return refreshed
 
 
 class MetaSkel(MetaBaseSkel):
@@ -734,6 +749,7 @@ class Skeleton(BaseSkeleton):
 			fields = []
 
 			for boneName, bone in skel.items():
+				# logging.debug("boneName, bone: %r, %r", boneName, bone)
 				if bone.searchable:
 					fields.extend(bone.getSearchDocumentFields(self.valuesCache, boneName))
 
@@ -991,28 +1007,37 @@ class SkelList( list ):
 ### Tasks ###
 
 @callDeferred
-def updateRelations( destID, minChangeTime, cursor=None ):
+def updateRelations(destID, minChangeTime, cursor=None):
 	logging.debug("Starting updateRelations for %s ; minChangeTime %s", destID, minChangeTime)
-	updateListQuery = db.Query( "viur-relations" ).filter("dest.key =", destID ).filter("viur_delayed_update_tag <",minChangeTime)
+	updateListQuery = db.Query("viur-relations").filter("dest.key =", destID).filter(
+		"viur_delayed_update_tag <", minChangeTime)
 	if cursor:
-		updateListQuery.cursor( cursor )
+		updateListQuery.cursor(cursor)
 	updateList = updateListQuery.run(limit=5)
 
 	for srcRel in updateList:
+		srcKind = srcRel["viur_src_kind"]
+		srcKey = srcRel["viur_src_property"]
+		# logging.debug("src kind: %r, %r", srcKind, srcKey)
 		try:
-			skel = skeletonByKind(srcRel["viur_src_kind"])()
+			skel = skeletonByKind(srcKind)()
 		except AssertionError:
-			logging.info("Deleting %s which refers to unknown kind %s" % (str(srcRel.key()), srcRel["viur_src_kind"]))
+			logging.info("Deleting %r which refers to unknown kind %r", str(srcRel.key()), srcKind)
 			continue
 
-		if not skel.fromDB( str(srcRel.key().parent()) ):
-			logging.warning("Cannot update stale reference to %s (referenced from %s)" % (str(srcRel.key().parent()), str(srcRel.key())))
+		srcBone = getattr(skel, srcKey)
+		if srcBone.oneShot:  # don't update bones which are write once
 			continue
-		for key,_bone in skel.items():
-			_bone.refresh(skel.valuesCache, key, skel)
-		skel.toDB( clearUpdateTag=True )
-	if len(updateList)==5:
-		updateRelations( destID, minChangeTime, updateListQuery.getCursor().urlsafe() )
+
+		if not skel.fromDB(str(srcRel.key().parent())):
+			logging.warning("Cannot update stale reference to %r (referenced from %r)", str(srcRel.key().parent()), str(srcRel.key()))
+			continue
+
+		if getattr(skel, srcKey).refresh(skel.valuesCache, srcKey, skel):
+			logging.debug("updateRelations: saving key %r in kind %r because of bone %r", skel["key"], skel.kindName, srcKey)
+			skel.toDB(clearUpdateTag=True)
+	if len(updateList) == 5:
+		updateRelations(destID, minChangeTime, updateListQuery.getCursor().urlsafe())
 
 
 @CallableTask
@@ -1024,7 +1049,6 @@ class TaskUpdateSearchIndex( CallableTaskBase ):
 	key = "rebuildSearchIndex"
 	name = u"Rebuild search index"
 	descr = u"This task can be called to update search indexes and relational information."
-
 
 	def canCall(self):
 		"""
@@ -1038,13 +1062,13 @@ class TaskUpdateSearchIndex( CallableTaskBase ):
 		modules = ["*"] + listKnownSkeletons()
 		skel = BaseSkeleton(cloned=True)
 		skel.module = selectOneBone( descr="Module", values={ x: x for x in modules}, required=True )
+
 		def verifyCompact(val):
 			if not val or val.lower()=="no" or val=="YES":
 				return None
 			return "Must be \"No\" or uppercase \"YES\" (very dangerous!)"
 		skel.compact = stringBone(descr="Recreate Entities", vfunc=verifyCompact, required=False, defaultValue="NO")
 		return skel
-
 
 	def execute(self, module, compact="", *args, **kwargs):
 		usr = utils.getCurrentUser()
@@ -1076,7 +1100,7 @@ def processChunk(module, compact, cursor, allCount=0, notify=None):
 		try:
 			skel = Skel()
 			skel.fromDB(str(key))
-			if compact=="YES":
+			if compact == "YES":
 				raise NotImplementedError() #FIXME: This deletes the __currentKey__ property..
 				skel.delete()
 			skel.refresh()
@@ -1093,9 +1117,9 @@ def processChunk(module, compact, cursor, allCount=0, notify=None):
 	else:
 		try:
 			if notify:
-				txt = ( "Subject: Rebuild search index finished for %s\n\n"+
-			                "ViUR finished to rebuild the search index for module %s.\n"+
-			                "%d records updated in total on this kind.") % (module, module, allCount)
+				txt = "Subject: Rebuild search index finished for %s\n\n" \
+					"ViUR finished to rebuild the search index for module %s.\n" \
+					"%d records updated in total on this kind." % (module, module, allCount)
 				utils.sendEMail([notify], txt, None)
 		except: #OverQuota, whatever
 			pass

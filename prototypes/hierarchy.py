@@ -10,6 +10,7 @@ from server.prototypes import BasicApplication
 from server.skeleton import Skeleton
 from server.tasks import callDeferred
 
+
 class HierarchySkel(Skeleton):
 	parententry = baseBone(descr="Parent", visible=False, indexed=True, readOnly=True)
 	parentrepo = baseBone(descr="BaseRepo", visible=False, indexed=True, readOnly=True)
@@ -21,12 +22,21 @@ class HierarchySkel(Skeleton):
 		return dbfields
 
 	def refresh(self):
-		if self["parententry"]:
-			self["parententry"] = utils.normalizeKey(self["parententry"])
+		refreshed = False
+		if self["parentdir"]:
+			newParentDir = utils.normalizeKey(self["parentdir"])
+			if newParentDir != self["parentdir"]:
+				self["parentdir"] = newParentDir
+				refreshed = True
 		if self["parentrepo"]:
-			self["parentrepo"] = utils.normalizeKey(self["parentrepo"])
-
-		super(HierarchySkel, self).refresh()
+			newParentRepo = utils.normalizeKey(self["parentrepo"])
+			if newParentRepo != self["parentrepo"]:
+				self["parentrepo"] = newParentRepo
+				refreshed = True
+		superRefreshed = super(HierarchySkel, self).refresh()
+		if superRefreshed:
+			return True
+		return refreshed
 
 
 class Hierarchy(BasicApplication):

@@ -53,8 +53,7 @@ class fileBone(treeItemBone):
 		return res
 
 	def refresh(self, valuesCache, boneName, skel):
-		"""
-			Refresh all values we might have cached from other entities.
+		"""Refresh all values we might have cached from other entities.
 		"""
 
 		def updateInplace(relDict):
@@ -83,15 +82,17 @@ class fileBone(treeItemBone):
 
 					logging.info("Trying to fetch entry from blobimportmap with hash %s" % oldKeyHash)
 					res = db.Get(db.Key.from_path("viur-blobimportmap", oldKeyHash))
-				except:
+				except Exception as err:
+					logging.debug(err)
 					res = None
 
 				if res and res["oldkey"] == valDict["dlkey"]:
 					valDict["dlkey"] = res["newkey"]
 					valDict["servingurl"] = res["servingurl"]
 
-					logging.info("Refreshing file dlkey %s (%s)" % (valDict["dlkey"],
-					                                                valDict["servingurl"]))
+					logging.info("Refreshing file dlkey %s (%s)" % (
+						valDict["dlkey"],
+						valDict["servingurl"]))
 				else:
 					if valDict["servingurl"]:
 						try:
@@ -99,12 +100,11 @@ class fileBone(treeItemBone):
 						except Exception as e:
 							logging.exception(e)
 
-
-		if not valuesCache[boneName]:
+		if not valuesCache[boneName] or not self.oneShot:
 			return
 
 		logging.info("Refreshing fileBone %s of %s" % (boneName, skel.kindName))
-		super(fileBone, self).refresh(valuesCache, boneName, skel)
+		superRefreshed = super(fileBone, self).refresh(valuesCache, boneName, skel)
 
 		if isinstance(valuesCache[boneName], dict):
 			updateInplace(valuesCache[boneName])
@@ -112,3 +112,5 @@ class fileBone(treeItemBone):
 		elif isinstance(valuesCache[boneName], list):
 			for k in valuesCache[boneName]:
 				updateInplace(k)
+
+		return True  # TODO: check if this is correct?

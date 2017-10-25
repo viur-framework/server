@@ -45,7 +45,7 @@ class relationalBone( baseBone ):
 	kind = None
 
 	def __init__(self, kind=None, module=None, refKeys=None, parentKeys=None, multiple=False,
-	             format="$(dest.name)", using=None, *args, **kwargs):
+	             format="$(dest.name)", using=None, oneShot=False, *args, **kwargs):
 		"""
 			Initialize a new relationalBone.
 
@@ -71,6 +71,7 @@ class relationalBone( baseBone ):
 		baseBone.__init__( self, *args, **kwargs )
 		self.multiple = multiple
 		self.format = format
+		self.oneShot = oneShot
 		#self._dbValue = None #Store the original result fetched from the db here so we have that information in case a referenced entity has been deleted
 
 		if kind:
@@ -723,9 +724,20 @@ class relationalBone( baseBone ):
 		return( res )
 
 	def refresh(self, valuesCache, boneName, skel):
+		"""Refresh all values we might have cached from other entities.
+
+		The method should return True if there were any changes, otherwise False
+
+		:param valuesCache:
+		:type valuesCache: dict
+		:param boneName:
+		:type boneName: str
+		:param skel: The skeleton instance we're working on
+		:type skel: :class:`server.skeleton.Skeleton`
+		:returns: if that bone has new values to save
+		:rtype: bool
 		"""
-			Refresh all values we might have cached from other entities.
-		"""
+
 		def updateInplace(relDict):
 			"""
 				Fetches the entity referenced by valDict["dest.key"] and updates all dest.* keys
@@ -769,9 +781,8 @@ class relationalBone( baseBone ):
 					elif key in newValues:
 						getattr(self._refSkelCache, key).unserialize(valDict, key, newValues)
 
-
-		if not valuesCache[boneName]:
-			return
+		if not valuesCache[boneName] or self.oneShot:
+			return False
 
 		logging.info("Refreshing relationalBone %s of %s" % (boneName, skel.kindName))
 
@@ -781,6 +792,8 @@ class relationalBone( baseBone ):
 		elif isinstance(valuesCache[boneName], list):
 			for k in valuesCache[boneName]:
 				updateInplace(k)
+
+		return True
 
 	def getSearchTags(self, values, key):
 		def getValues(res, skel, valuesCache):

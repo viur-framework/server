@@ -419,10 +419,21 @@ class baseBone(object): # One Bone:
 		pass
 
 	def refresh(self, valuesCache, boneName, skel):
+		"""Refresh all values we might have cached from other entities.
+
+		The method should return True if there were any changes, otherwise False
+
+		:param valuesCache:
+		:type valuesCache: dict
+		:param boneName:
+		:type boneName: str
+		:param skel: The skeleton instance we're working on
+		:type skel: :class:`server.skeleton.Skeleton`
+		:returns: if that bone has new values to save
+		:rtype: bool
 		"""
-			Refresh all values we might have cached from other entities.
-		"""
-		pass
+
+		return False
 
 	def mergeFrom(self, valuesCache, boneName, otherSkel):
 		"""

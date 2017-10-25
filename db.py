@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-from google.appengine.api import datastore, datastore_types, datastore_errors
-from google.appengine.datastore import datastore_query, datastore_rpc
-from google.appengine.api import memcache
-from google.appengine.api import search
-from server.config import conf
 import logging
 
+from google.appengine.api import datastore, datastore_types, datastore_errors
+from google.appengine.api import memcache
+from google.appengine.api import search
+from google.appengine.datastore import datastore_query, datastore_rpc
+
+from server.config import conf
 
 """
 	Tiny wrapper around *google.appengine.api.datastore*.
@@ -32,7 +33,7 @@ def PutAsync( entities, **kwargs ):
 	"""
 	if isinstance( entities, Entity ):
 		entities._fixUnindexedProperties()
-	elif isinstance( entities, List ):
+	elif isinstance( entities, list):
 		for entity in entities:
 			assert isinstance( entity, Entity )
 			entity._fixUnindexedProperties()
@@ -348,7 +349,7 @@ class Query( object ):
 			:returns: Returns the query itself for chaining.
 			:rtype: server.db.Query
 		"""
-		from server.bones import baseBone, relationalBone
+		from server.bones import relationalBone
 		if "id" in filters:
 			self.datastoreQuery = None
 			logging.error("Filtering by id is no longer supported. Use key instead.")
@@ -998,23 +999,23 @@ class Query( object ):
 
 
 class Entity( datastore.Entity ):
+	""" Wraps ``datastore.Entity`` to prevent trying to add a string with more than 500 chars to an index and providing a camelCase-API.
 	"""
-		Wraps ``datastore.Entity`` to prevent trying to add a string with more than 500 chars
-		to an index and providing a camelCase-API.
-	"""
-	def _fixUnindexedProperties( self ):
+
+	def _fixUnindexedProperties(self):
 		"""
 			Ensures that no property with strlen > 500 makes it into the index.
 		"""
 		unindexed = list( self.getUnindexedProperties() )
-		for k,v in self.items():
-			if isinstance( v, basestring ) and len( v )>=500 and not k in unindexed:
-				logging.warning("Your property %s cant be indexed!" % k)
-				unindexed.append( k )
-			elif isinstance( v, list ) or isinstance( v, tuple() ):
-				if any( [ isinstance(x,basestring) and len(x)>=500 for x in v] ) and not k in unindexed:
-					logging.warning("Your property %s cant be indexed!" % k)
-					unindexed.append( k )
+		for key, value in self.items():
+			# logging.debug("key, value: %r, %r", key, value)
+			if isinstance(value, basestring) and len(value) >= 500 and key not in unindexed:
+				logging.warning("Your property %r cant be indexed!", key)
+				unindexed.append(key)
+			elif isinstance(value, list) or isinstance(value, tuple()):
+				if any([isinstance(x, basestring) and len(x) >= 500 for x in value]) and key not in unindexed:
+					logging.warning("Your property %r cant be indexed!", key)
+					unindexed.append(key)
 		self.set_unindexed_properties( unindexed )
 
 	def isSaved(self):

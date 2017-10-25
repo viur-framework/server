@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-from server import db, utils, errors, session, conf, securitykey
-from server import forcePost, forceSSL, exposed, internalExposed
+import logging
+from datetime import datetime
 
+from server import db, utils, errors, conf, securitykey
+from server import forcePost, forceSSL, exposed, internalExposed
+from server.bones import baseBone
 from server.prototypes import BasicApplication
-from server.bones import baseBone, numericBone
-from server.skeleton import Skeleton, skeletonByKind
+from server.skeleton import Skeleton
 from server.tasks import callDeferred
 
-from datetime import datetime
-import logging
 
 class TreeLeafSkel( Skeleton ):
 	parentdir = baseBone( descr="Parent", visible=False, indexed=True, readOnly=True )
@@ -39,11 +39,22 @@ class TreeLeafSkel( Skeleton ):
 		return res
 
 	def refresh(self):
+		refreshed = False
 		if self["parentdir"]:
-			self["parentdir"] = utils.normalizeKey(self["parentdir"])
+			newParentDir = utils.normalizeKey(self["parentdir"])
+			if newParentDir != self["parentdir"]:
+				self["parentdir"] = newParentDir
+				refreshed = True
 		if self["parentrepo"]:
-			self["parentrepo"] = utils.normalizeKey(self["parentrepo"])
-		super( TreeLeafSkel, self ).refresh()
+			newParentRepo = utils.normalizeKey(self["parentrepo"])
+			if newParentRepo != self["parentrepo"]:
+				self["parentrepo"] = newParentRepo
+				refreshed = True
+		superRefreshed = super(TreeLeafSkel, self).refresh()
+		if superRefreshed:
+			return True
+		return refreshed
+
 
 class TreeNodeSkel( TreeLeafSkel ):
 	pass

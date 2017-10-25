@@ -34,6 +34,7 @@ class fileBaseSkel(TreeLeafSkel):
 
 	def refresh(self):
 		# Update from blobimportmap
+		refreshed = False
 		try:
 			oldKeyHash = sha256(self["dlkey"]).hexdigest().encode("hex")
 			res = db.Get( db.Key.from_path("viur-blobimportmap", oldKeyHash))
@@ -43,13 +44,21 @@ class fileBaseSkel(TreeLeafSkel):
 			self["dlkey"] = res["newkey"]
 			self["servingurl"] = res["servingurl"]
 			logging.info("Refreshing file dlkey %s (%s)" % (self["dlkey"], self["servingurl"]))
+			refreshed = True
 		else:
-			if self["servingurl"]:
+			currentServingUrl = self["servingurl"]
+			if currentServingUrl:
 				try:
-					self["servingurl"] = images.get_serving_url(self["dlkey"])
+					imageServingUrl = images.get_serving_url(self["dlkey"])
+					if currentServingUrl != imageServingUrl:
+						self["servingurl"] = imageServingUrl
+						refreshed = True
 				except Exception as e:
 					logging.exception(e)
-		super(fileBaseSkel, self).refresh()
+		superResult = super(fileBaseSkel, self).refresh()
+		if superResult:
+			return True
+		return refreshed
 
 	def preProcessBlobLocks(self, locks):
 		"""
