@@ -55,8 +55,13 @@ class fileBone(treeItemBone):
 	def refresh(self, valuesCache, boneName, skel):
 		"""Refresh all values we might have cached from other entities.
 		"""
+		# TODO: do we use the refreshed state correctly?
+		refreshed = False
 
 		def updateInplace(relDict):
+			# TODO: do we use the refreshed state correctly?
+			inplaceRefreshed = False
+
 			if isinstance(relDict, dict) and "dest" in relDict:
 				valDict = relDict["dest"]
 			else:
@@ -73,14 +78,14 @@ class fileBone(treeItemBone):
 			if originalKey != entityKey:
 				logging.info("Rewriting %s to %s" % (originalKey, entityKey))
 				valDict["key"] = originalKey
+				inplaceRefreshed = True
 
 			# Anyway, try to copy a dlkey and servingurl
 			# from the corresponding viur-blobimportmap entity.
 			if "dlkey" in valDict:
 				try:
 					oldKeyHash = sha256(valDict["dlkey"]).hexdigest().encode("hex")
-
-					logging.info("Trying to fetch entry from blobimportmap with hash %s" % oldKeyHash)
+					logging.info("Trying to fetch entry from blobimportmap with hash %r", oldKeyHash)
 					res = db.Get(db.Key.from_path("viur-blobimportmap", oldKeyHash))
 				except Exception as err:
 					logging.debug(err)
@@ -89,16 +94,15 @@ class fileBone(treeItemBone):
 				if res and res["oldkey"] == valDict["dlkey"]:
 					valDict["dlkey"] = res["newkey"]
 					valDict["servingurl"] = res["servingurl"]
-
-					logging.info("Refreshing file dlkey %s (%s)" % (
-						valDict["dlkey"],
-						valDict["servingurl"]))
+					logging.info("Refreshing file dlkey %r and servingurl (%r)", valDict["dlkey"], valDict["servingurl"])
 				else:
 					if valDict["servingurl"]:
 						try:
 							valDict["servingurl"] = images.get_serving_url(valDict["dlkey"])
 						except Exception as e:
 							logging.exception(e)
+				inplaceRefreshed = True  # TODO: really refreshing needed???
+			return inplaceRefreshed
 
 		if not valuesCache[boneName] or not self.oneShot:
 			return
@@ -107,10 +111,12 @@ class fileBone(treeItemBone):
 		superRefreshed = super(fileBone, self).refresh(valuesCache, boneName, skel)
 
 		if isinstance(valuesCache[boneName], dict):
-			updateInplace(valuesCache[boneName])
+			if updateInplace(valuesCache[boneName]):
+				refreshed = True
 
 		elif isinstance(valuesCache[boneName], list):
 			for k in valuesCache[boneName]:
-				updateInplace(k)
+				if updateInplace(k):
+					refreshed = True
 
-		return True  # TODO: check if this is correct?
+		return superRefreshed or refreshed

@@ -33,6 +33,7 @@ class fileBaseSkel(TreeLeafSkel):
 	height = numericBone(descr="Height", indexed=True, searchable=True)
 
 	def refresh(self):
+		# TODO: do we use the refreshed state correctly?
 		# Update from blobimportmap
 		refreshed = False
 		try:
@@ -43,7 +44,7 @@ class fileBaseSkel(TreeLeafSkel):
 		if res and res["oldkey"] == self["dlkey"]:
 			self["dlkey"] = res["newkey"]
 			self["servingurl"] = res["servingurl"]
-			logging.info("Refreshing file dlkey %s (%s)" % (self["dlkey"], self["servingurl"]))
+			logging.info("Refreshing file dlkey %r %r", self["dlkey"], self["servingurl"])
 			refreshed = True
 		else:
 			currentServingUrl = self["servingurl"]
@@ -53,12 +54,10 @@ class fileBaseSkel(TreeLeafSkel):
 					if currentServingUrl != imageServingUrl:
 						self["servingurl"] = imageServingUrl
 						refreshed = True
-				except Exception as e:
-					logging.exception(e)
-		superResult = super(fileBaseSkel, self).refresh()
-		if superResult:
-			return True
-		return refreshed
+				except Exception as err:
+					logging.exception(err)
+		superRefreshed = super(fileBaseSkel, self).refresh()
+		return superRefreshed or refreshed
 
 	def preProcessBlobLocks(self, locks):
 		"""

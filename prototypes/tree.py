@@ -39,6 +39,7 @@ class TreeLeafSkel( Skeleton ):
 		return res
 
 	def refresh(self):
+		# TODO: do we use the refreshed state correctly?
 		refreshed = False
 		if self["parentdir"]:
 			newParentDir = utils.normalizeKey(self["parentdir"])
@@ -51,9 +52,7 @@ class TreeLeafSkel( Skeleton ):
 				self["parentrepo"] = newParentRepo
 				refreshed = True
 		superRefreshed = super(TreeLeafSkel, self).refresh()
-		if superRefreshed:
-			return True
-		return refreshed
+		return superRefreshed or refreshed
 
 
 class TreeNodeSkel( TreeLeafSkel ):

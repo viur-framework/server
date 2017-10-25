@@ -738,15 +738,23 @@ class relationalBone( baseBone ):
 		:rtype: bool
 		"""
 
+		# TODO: do we use the refreshed state correctly?
+		refreshed = False
+
 		def updateInplace(relDict):
+			"""Fetches the entity referenced by valDict["dest.key"] and updates all dest.* keys accordingly if changed
+
+			:param relDict: the dest part of an relationalBone entry
+			:type relDict: dict
+			:return: Has something changed aka refreshed?
+			:rtype: bool
 			"""
-				Fetches the entity referenced by valDict["dest.key"] and updates all dest.* keys
-				accordingly
-			"""
+			# TODO: do we use the refreshed state correctly?
+			inplaceRefreshed = False
 			if isinstance(relDict, dict) and "dest" in relDict:
 				valDict = relDict["dest"]
 			else:
-				logging.error("Invalid dictionary in updateInplace: %s" % relDict)
+				logging.error("Invalid dictionary in updateInplace: %r", relDict)
 				return
 
 			if "key" in valDict and valDict["key"]:
@@ -757,8 +765,9 @@ class relationalBone( baseBone ):
 
 			entityKey = normalizeKey(originalKey)
 			if originalKey != entityKey:
-				logging.info("Rewriting %s to %s" % (originalKey, entityKey))
+				logging.info("Rewriting %r to %r", originalKey, entityKey)
 				valDict["key"] = entityKey
+				inplaceRefreshed = True
 
 			# Try to update referenced values;
 			# If the entity does not exist with this key, ignore
@@ -769,17 +778,24 @@ class relationalBone( baseBone ):
 				newValues = db.Get(entityKey)
 				assert newValues is not None
 			except db.EntityNotFoundError:
-				#This entity has been deleted
-				logging.info("The key %s does not exist" % entityKey)
-			except:
+				# This entity has been deleted
+				logging.info("The key %r does not exist", entityKey)
+			except Exception:
 				raise
 
 			if newValues:
-				for key in self._refSkelCache.keys():
+				refSkel = self._refSkelCache
+				for key in refSkel.keys():
 					if key == "key":
 						continue
 					elif key in newValues:
-						getattr(self._refSkelCache, key).unserialize(valDict, key, newValues)
+						# TODO: can we compare valDict values against newValues values?
+						logging.debug("comparing existing vs remote values: %r, %r", valDict.get(key), newValues.get(key))
+						if valDict.get(key) != newValues.get(key):
+							inplaceRefreshed = True
+							getattr(refSkel, key).unserialize(valDict, key, newValues)
+
+			return inplaceRefreshed
 
 		if not valuesCache[boneName] or self.oneShot:
 			return False
@@ -787,13 +803,15 @@ class relationalBone( baseBone ):
 		logging.info("Refreshing relationalBone %s of %s" % (boneName, skel.kindName))
 
 		if isinstance(valuesCache[boneName], dict):
-			updateInplace(valuesCache[boneName])
+			if updateInplace(valuesCache[boneName]):
+				refreshed = True
 
 		elif isinstance(valuesCache[boneName], list):
 			for k in valuesCache[boneName]:
-				updateInplace(k)
+				if updateInplace(k):
+					refreshed = True
 
-		return True
+		return refreshed
 
 	def getSearchTags(self, values, key):
 		def getValues(res, skel, valuesCache):

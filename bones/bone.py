@@ -433,6 +433,7 @@ class baseBone(object): # One Bone:
 		:rtype: bool
 		"""
 
+		# TODO: do we use the refreshed state correctly?
 		return False
 
 	def mergeFrom(self, valuesCache, boneName, otherSkel):

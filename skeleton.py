@@ -429,11 +429,13 @@ class BaseSkeleton(object):
 		:rtype: bool
 		"""
 
+		# TODO: do we use the refreshed state correctly?
 		refreshed = False
 		for key, bone in self.items():
 			try:
 				bone_refreshed = bone.refresh(self.valuesCache, key, self)
 				if bone_refreshed:
+					logging.debug("bone %r of kind %r announces a changed state", key, self.kindName)
 					refreshed = True
 			except Exception as err:
 				logging.exception(err)
@@ -974,6 +976,7 @@ class RefSkel(RelSkel):
 		#super(BaseSkeleton, skel).__setattr__("_BaseSkeleton__isInitialized_", True)
 		return skel
 
+
 class SkelList( list ):
 	"""
 		This class is used to hold multiple skeletons together with other, commonly used information.
@@ -1017,25 +1020,26 @@ def updateRelations(destID, minChangeTime, cursor=None):
 
 	for srcRel in updateList:
 		srcKind = srcRel["viur_src_kind"]
-		srcKey = srcRel["viur_src_property"]
-		# logging.debug("src kind: %r, %r", srcKind, srcKey)
+		srcBoneName = srcRel["viur_src_property"]
+		srcRelKey = srcRel.key()
+		logging.debug("src kind: %r, %r", srcKind, srcBoneName)
 		try:
-			skel = skeletonByKind(srcKind)()
+			srcEntry = skeletonByKind(srcKind)()
 		except AssertionError:
-			logging.info("Deleting %r which refers to unknown kind %r", str(srcRel.key()), srcKind)
+			logging.info("Deleting %r which refers to unknown kind %r", str(srcRelKey), srcKind)
 			continue
 
-		srcBone = getattr(skel, srcKey)
+		srcBone = getattr(srcEntry, srcBoneName)
 		if srcBone.oneShot:  # don't update bones which are write once
 			continue
 
-		if not skel.fromDB(str(srcRel.key().parent())):
-			logging.warning("Cannot update stale reference to %r (referenced from %r)", str(srcRel.key().parent()), str(srcRel.key()))
+		if not srcEntry.fromDB(str(srcRelKey.parent())):
+			logging.warning("Cannot update stale reference to %r (referenced from %r)", str(srcRelKey.parent()), str(srcRelKey))
 			continue
 
-		if getattr(skel, srcKey).refresh(skel.valuesCache, srcKey, skel):
-			logging.debug("updateRelations: saving key %r in kind %r because of bone %r", skel["key"], skel.kindName, srcKey)
-			skel.toDB(clearUpdateTag=True)
+		if srcBone.refresh(srcEntry.valuesCache, srcBoneName, srcEntry):
+			logging.debug("updateRelations: saving entry %r in kind %r because of bone %r", srcEntry["key"], srcEntry.kindName, srcBoneName)
+			srcEntry.toDB(clearUpdateTag=True)
 	if len(updateList) == 5:
 		updateRelations(destID, minChangeTime, updateListQuery.getCursor().urlsafe())
 
