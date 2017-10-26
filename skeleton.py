@@ -1116,9 +1116,9 @@ def processChunk(module, compact, cursor, allCount=0, notify=None):
 			# TODO: is Skeleton.refresh already in such a good shape to trust the return value or do we even split refresh?
 			if skel.refresh():
 				skel.toDB(clearUpdateTag=True)
-		except Exception as e:
+		except Exception as err:
 			logging.error("Updating %s failed" % str(key) )
-			logging.exception( e )
+			logging.exception(e)
 			raise
 	newCursor = query.getCursor()
 	logging.info("END processChunk %s, %d records refreshed" % (module, count))
