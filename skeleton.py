@@ -751,7 +751,7 @@ class Skeleton(BaseSkeleton):
 			fields = []
 
 			for boneName, bone in skel.items():
-				# logging.debug("boneName, bone: %r, %r", boneName, bone)
+				logging.debug("boneName, bone: %r, %r", boneName, bone)
 				if bone.searchable:
 					fields.extend(bone.getSearchDocumentFields(self.valuesCache, boneName))
 
@@ -1013,7 +1013,7 @@ class SkelList( list ):
 def updateRelations(destID, minChangeTime, cursor=None):
 	logging.debug("Starting updateRelations for %s ; minChangeTime %s", destID, minChangeTime)
 	updateListQuery = db.Query("viur-relations").filter("dest.key =", destID).filter(
-		"viur_delayed_update_tag <", minChangeTime)
+		"viur_delayed_update_tag <", minChangeTime).filter("viur_delayed_update_tag >", 0)
 	if cursor:
 		updateListQuery.cursor(cursor)
 	updateList = updateListQuery.run(limit=5)
@@ -1022,15 +1022,20 @@ def updateRelations(destID, minChangeTime, cursor=None):
 		srcKind = srcRel["viur_src_kind"]
 		srcBoneName = srcRel["viur_src_property"]
 		srcRelKey = srcRel.key()
-		logging.debug("src kind: %r, %r", srcKind, srcBoneName)
+		logging.debug("updateRelations SrcKind, srcBoneName, destKind, updateTag: %r, %r, %r, %r", srcKind, srcBoneName, srcRel["viur_dest_kind"], srcRel["viur_delayed_update_tag"])
 		try:
 			srcEntry = skeletonByKind(srcKind)()
 		except AssertionError:
 			logging.info("Deleting %r which refers to unknown kind %r", str(srcRelKey), srcKind)
 			continue
 
-		srcBone = getattr(srcEntry, srcBoneName)
-		if srcBone.oneShot:  # don't update bones which are write once
+		logging.debug("srcEntry: %r, %r", srcEntry, srcBoneName)
+		try:
+			srcBone = getattr(srcEntry, srcBoneName)
+		except:
+			db.Delete(srcRelKey)
+			continue  # TODO: handle not existing bones case here
+		if srcBone.updateLevel:  # don't update bones which are write once
 			continue
 
 		if not srcEntry.fromDB(str(srcRelKey.parent())):
@@ -1040,6 +1045,8 @@ def updateRelations(destID, minChangeTime, cursor=None):
 		if srcBone.refresh(srcEntry.valuesCache, srcBoneName, srcEntry):
 			logging.debug("updateRelations: saving entry %r in kind %r because of bone %r", srcEntry["key"], srcEntry.kindName, srcBoneName)
 			srcEntry.toDB(clearUpdateTag=True)
+		srcRel["viur_delayed_update_tag"] = 0
+		db.Put(srcRel)
 	if len(updateList) == 5:
 		updateRelations(destID, minChangeTime, updateListQuery.getCursor().urlsafe())
 

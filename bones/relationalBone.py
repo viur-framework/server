@@ -45,33 +45,34 @@ class relationalBone( baseBone ):
 	kind = None
 
 	def __init__(self, kind=None, module=None, refKeys=None, parentKeys=None, multiple=False,
-	             format="$(dest.name)", using=None, oneShot=False, *args, **kwargs):
-		"""
-			Initialize a new relationalBone.
+	             format="$(dest.name)", using=None, updateLevel=0, *args, **kwargs):
+		"""Initialize a new relationalBone.
 
-			:param kind: KindName of the referenced property.
-			:type kind: String
-			:param module: Name of the modul which should be used to select entities of kind "type". If not set,
-				the value of "type" will be used (the kindName must match the moduleName)
-			:type type: String
-			:param refKeys: A list of properties to include from the referenced property. These properties will be
-				avaiable in the template without having to fetch the referenced property. Filtering is also only possible
-				by properties named here!
-			:type refKeys: List of Strings
-			:param parentKeys: A list of properties from the current skeleton to include. If mixing filtering by
-				relational properties and properties of the class itself, these must be named here.
-			:type parentKeys: List of Strings
-			:param multiple: If True, allow referencing multiple Elements of the given class. (Eg. n:n-relation.
-				otherwise its n:1 )
-			:type multiple: False
-			:param format: Hint for the admin how to display such an relation. See admin/utils.py:formatString for
-				more information
-			:type format: String
+		:param kind: KindName of the referenced property.
+		:type kind: String
+		:param module: Name of the modul which should be used to select entities of kind "type". If not set,
+			the value of "type" will be used (the kindName must match the moduleName)
+		:type type: String
+		:param refKeys: A list of properties to include from the referenced property. These properties will be
+			available in the template without having to fetch the referenced property. Filtering is also only possible
+			by properties named here!
+		:type refKeys: List of Strings
+		:param parentKeys: A list of properties from the current skeleton to include. If mixing filtering by
+			relational properties and properties of the class itself, these must be named here.
+		:type parentKeys: List of Strings
+		:param multiple: If True, allow referencing multiple Elements of the given class. (Eg. n:n-relation.
+			otherwise its n:1 )
+		:type multiple: False
+		:param format: Hint for the admin how to display such an relation. See admin/utils.py:formatString for
+			more information
+		:type format: String
+		:param updateLevel: level 0==always update refkeys (old behavior), 1==update refKeys only on rebuildSearchIndex, 2==write once on set, never update again refKeys
+		:type updateLevel: int
 		"""
 		baseBone.__init__( self, *args, **kwargs )
 		self.multiple = multiple
 		self.format = format
-		self.oneShot = oneShot
+		self.updateLevel = updateLevel
 		#self._dbValue = None #Store the original result fetched from the db here so we have that information in case a referenced entity has been deleted
 
 		if kind:
@@ -292,7 +293,17 @@ class relationalBone( baseBone ):
 						usingSkel.setValuesCache(data["rel"])
 						for k, v in usingSkel.serialize().items():
 							dbObj[ "rel."+k ] = v
-					dbObj[ "viur_delayed_update_tag" ] = time()
+
+					# TODO: new oneShot logic, checking if this is usable and doesn't break anything
+					try:
+						updateLevel = getattr(skel, boneName).updateLevel
+					except:
+						updateLevel = 0
+					logging.debug("postSavedHandler updateLevel: %r, %r, %r, %r", skel.kindName, self.kind, boneName, updateLevel)
+					if updateLevel == 0:
+						dbObj[ "viur_delayed_update_tag" ] = time()
+					else:
+						dbObj[ "viur_delayed_update_tag" ] = 0
 					db.Put( dbObj )
 				values.remove( data )
 
@@ -797,7 +808,7 @@ class relationalBone( baseBone ):
 
 			return inplaceRefreshed
 
-		if not valuesCache[boneName] or self.oneShot:
+		if not valuesCache[boneName] or self.updateLevel == 2:
 			return False
 
 		logging.info("Refreshing relationalBone %s of %s" % (boneName, skel.kindName))

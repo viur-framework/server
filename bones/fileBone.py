@@ -104,7 +104,7 @@ class fileBone(treeItemBone):
 				inplaceRefreshed = True  # TODO: really refreshing needed???
 			return inplaceRefreshed
 
-		if not valuesCache[boneName] or not self.oneShot:
+		if not valuesCache[boneName] or self.updateLevel == 2:
 			return
 
 		logging.info("Refreshing fileBone %s of %s" % (boneName, skel.kindName))
