@@ -300,7 +300,7 @@ class relationalBone( baseBone ):
 						updateLevel = getattr(skel, boneName).updateLevel
 					except:
 						updateLevel = 0
-					logging.debug("postSavedHandler updateLevel: %r, %r, %r, %r", skel.kindName, self.kind, boneName, updateLevel)
+					# logging.debug("postSavedHandler updateLevel: %r, %r, %r, %r", skel.kindName, self.kind, boneName, updateLevel)
 					if updateLevel == 0:
 						dbObj[ "viur_delayed_update_tag" ] = time()
 					else:
@@ -802,7 +802,7 @@ class relationalBone( baseBone ):
 						continue
 					elif key in newValues:
 						# TODO: can we compare valDict values against newValues values?
-						logging.debug("comparing existing vs remote values: %r, %r", valDict.get(key), newValues.get(key))
+						# logging.debug("comparing existing vs remote values: %r, %r", valDict.get(key), newValues.get(key))
 						if valDict.get(key) != newValues.get(key):
 							inplaceRefreshed = True
 							getattr(refSkel, key).unserialize(valDict, key, newValues)
@@ -812,7 +812,7 @@ class relationalBone( baseBone ):
 		if not valuesCache[boneName] or self.updateLevel == 2:
 			return False
 
-		logging.info("Refreshing relationalBone %s of %s" % (boneName, skel.kindName))
+		# logging.info("Refreshing relationalBone %s of %s" % (boneName, skel.kindName))
 
 		if isinstance(valuesCache[boneName], dict):
 			if updateInplace(valuesCache[boneName]):
