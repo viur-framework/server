@@ -284,6 +284,7 @@ class relationalBone( baseBone ):
 					#Write our (updated) values in
 					refSkel = self._refSkelCache
 					refSkel.setValuesCache(data["dest"])
+					# TODO: what about this part in terms of oneShot/updateLevel?
 					for k, v in refSkel.serialize().items():
 						dbObj[ "dest."+k ] = v
 					for k,v in parentValues.items():
@@ -294,7 +295,7 @@ class relationalBone( baseBone ):
 						for k, v in usingSkel.serialize().items():
 							dbObj[ "rel."+k ] = v
 
-					# TODO: new oneShot logic, checking if this is usable and doesn't break anything
+					# TODO: new oneShot/updateLevel logic, checking if this is usable and doesn't break anything
 					try:
 						updateLevel = getattr(skel, boneName).updateLevel
 					except:
@@ -757,7 +758,7 @@ class relationalBone( baseBone ):
 
 			:param relDict: the dest part of an relationalBone entry
 			:type relDict: dict
-			:return: Has something changed aka refreshed?
+			:return: do we changed something aka refreshed?
 			:rtype: bool
 			"""
 			# TODO: do we use the refreshed state correctly?
@@ -818,8 +819,8 @@ class relationalBone( baseBone ):
 				refreshed = True
 
 		elif isinstance(valuesCache[boneName], list):
-			for k in valuesCache[boneName]:
-				if updateInplace(k):
+			for key in valuesCache[boneName]:
+				if updateInplace(key):
 					refreshed = True
 
 		return refreshed

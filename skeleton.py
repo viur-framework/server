@@ -751,7 +751,6 @@ class Skeleton(BaseSkeleton):
 			fields = []
 
 			for boneName, bone in skel.items():
-				logging.debug("boneName, bone: %r, %r", boneName, bone)
 				if bone.searchable:
 					fields.extend(bone.getSearchDocumentFields(self.valuesCache, boneName))
 
@@ -1114,8 +1113,9 @@ def processChunk(module, compact, cursor, allCount=0, notify=None):
 			if compact == "YES":
 				raise NotImplementedError() #FIXME: This deletes the __currentKey__ property..
 				skel.delete()
-			skel.refresh()
-			skel.toDB(clearUpdateTag=True)
+			# TODO: is Skeleton.refresh already in such a good shape to trust the return value or do we even split refresh?
+			if skel.refresh():
+				skel.toDB(clearUpdateTag=True)
 		except Exception as e:
 			logging.error("Updating %s failed" % str(key) )
 			logging.exception( e )
