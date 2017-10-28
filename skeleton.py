@@ -1044,8 +1044,6 @@ def updateRelations(destID, minChangeTime, cursor=None):
 		if srcBone.refresh(srcEntry.valuesCache, srcBoneName, srcEntry):
 			logging.debug("updateRelations: saving entry %r in kind %r because of bone %r", srcEntry["key"], srcEntry.kindName, srcBoneName)
 			srcEntry.toDB(clearUpdateTag=True)
-		srcRel["viur_delayed_update_tag"] = 0
-		db.Put(srcRel)
 	if len(updateList) == 5:
 		updateRelations(destID, minChangeTime, updateListQuery.getCursor().urlsafe())
 
@@ -1113,7 +1111,7 @@ def processChunk(module, compact, cursor, allCount=0, notify=None):
 			if compact == "YES":
 				raise NotImplementedError() #FIXME: This deletes the __currentKey__ property..
 				skel.delete()
-			# TODO: is Skeleton.refresh already in such a good shape to trust the return value or do we even split refresh?
+			# TODO: is Skeleton.refresh in class hierarchy already in such a good shape to trust the return value or do we even split refresh?
 			if skel.refresh():
 				skel.toDB(clearUpdateTag=True)
 		except Exception as err:
