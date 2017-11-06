@@ -1016,34 +1016,28 @@ def updateRelations(destID, minChangeTime, cursor=None):
 	if cursor:
 		updateListQuery.cursor(cursor)
 	updateList = updateListQuery.run(limit=5)
+	alreadySeen = set()
 
 	for srcRel in updateList:
-		srcKind = srcRel["viur_src_kind"]
-		srcBoneName = srcRel["viur_src_property"]
-		srcRelKey = srcRel.key()
-		logging.debug("updateRelations SrcKind, srcBoneName, destKind, updateTag: %r, %r, %r, %r", srcKind, srcBoneName, srcRel["viur_dest_kind"], srcRel["viur_delayed_update_tag"])
+		srcRelKey = str(srcRel.key())
+		if srcRelKey in alreadySeen:
+			continue
+
 		try:
-			srcEntry = skeletonByKind(srcKind)()
+			skel = skeletonByKind(srcRel["viur_src_kind"])()
 		except AssertionError:
-			logging.info("Deleting %r which refers to unknown kind %r", str(srcRelKey), srcKind)
+			logging.info("Deleting %s which refers to unknown kind %s" % (str(srcRel.key()), srcRel["viur_src_kind"]))
 			continue
 
-		logging.debug("srcEntry: %r, %r", srcEntry, srcBoneName)
-		try:
-			srcBone = getattr(srcEntry, srcBoneName)
-		except:
-			db.Delete(srcRelKey)
-			continue  # TODO: handle not existing bones case here
-		if srcBone.updateLevel:  # don't update bones which are write once
+		if not skel.fromDB(str(srcRel.key().parent())):
+			logging.warning("Cannot update stale reference to %s (referenced from %s)",
+			str(srcRel.key().parent()), str(srcRel.key()))
 			continue
+		for key, _bone in skel.items():
+			_bone.refresh(skel.valuesCache, key, skel)
 
-		if not srcEntry.fromDB(str(srcRelKey.parent())):
-			logging.warning("Cannot update stale reference to %r (referenced from %r)", str(srcRelKey.parent()), str(srcRelKey))
-			continue
-
-		if srcBone.refresh(srcEntry.valuesCache, srcBoneName, srcEntry):
-			logging.debug("updateRelations: saving entry %r in kind %r because of bone %r", srcEntry["key"], srcEntry.kindName, srcBoneName)
-			srcEntry.toDB(clearUpdateTag=True)
+		skel.toDB(clearUpdateTag=True)
+		alreadySeen.add(srcRelKey)
 	if len(updateList) == 5:
 		updateRelations(destID, minChangeTime, updateListQuery.getCursor().urlsafe())
 

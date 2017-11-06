@@ -846,7 +846,7 @@ class relationalBone(baseBone):
 				if updateInplace(key):
 					refreshed = True
 
-		return refreshed
+		return self.updateLevel == 0 or refreshed
 
 	def getSearchTags(self, values, key):
 		def getValues(res, skel, valuesCache):
