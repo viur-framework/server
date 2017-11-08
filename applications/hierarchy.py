@@ -439,14 +439,14 @@ class Hierarchy( object ):
 
 	@forceSSL
 	@exposed
-	def clone(self, from_repo, to_repo, from_parent = None, to_parent = None, *args, **kwargs ):
+	def clone(self, fromRepo, toRepo, fromParent = None, toParent = None, *args, **kwargs):
 		"""
 		Clones a hierarchy recursively.
 
-		:param from_repo: is the ID to the repository (=rootNode ID) to clone from.
-		:param to_repo: is the ID to the repository (=rootNode ID) to clone to.
-		:param from_parent: is the parent to clone from; for root nodes, this is equal to from_repo.
-		:param to_parent: is the parent to clone to; for root nodes, this is equal to to_repo.
+		:param fromRepo: is the ID to the repository (=rootNode ID) to clone from.
+		:param toRepo: is the ID to the repository (=rootNode ID) to clone to.
+		:param fromParent: is the parent to clone from; for root nodes, this is equal to from_repo.
+		:param toParent: is the parent to clone to; for root nodes, this is equal to to_repo.
 
 		:return:
 		"""
@@ -455,27 +455,27 @@ class Hierarchy( object ):
 		else:
 			skey = ""
 
-		assert from_repo
-		assert to_repo
+		assert fromRepo
+		assert toRepo
 
-		if from_parent is None:
-			from_parent = from_repo
-		if to_parent is None:
-			to_parent = to_repo
+		if fromParent is None:
+			fromParent = fromRepo
+		if toParent is None:
+			toParent = toRepo
 
-		if not self.isValidParent( from_parent ) or not self.isValidParent( to_parent ): #Ensure the parents exists
+		if not self.isValidParent(fromParent) or not self.isValidParent(toParent): #Ensure the parents exists
 			raise errors.NotAcceptable()
 
-		if not self.canAdd( to_parent ):
+		if not self.canAdd(toParent):
 			raise errors.Unauthorized()
 		if not securitykey.validate( skey, acceptSessionKey=True ):
 			raise errors.PreconditionFailed()
 
-		self._clone( from_repo, to_repo, from_parent, to_parent )
+		self._clone(fromRepo, toRepo, fromParent, toParent)
 
 	@callDeferred
-	def _clone( self, from_repo, to_repo, from_parent, to_parent ):
-		for node in self.viewSkel().all().filter("parententry =", from_parent).order("sortindex").run(99):
+	def _clone(self, fromRepo, toRepo, fromParent, toParent):
+		for node in self.viewSkel().all().filter("parententry =", fromParent).order("sortindex").run(99):
 			old_id = str(node.key())
 
 			skel = self.addSkel()
@@ -491,13 +491,13 @@ class Hierarchy( object ):
 			#for k,v in skel.items():
 			#	print( "BEHIND %s = >%s<", ( k, v.value ) )
 
-			skel[ "parententry" ].value = to_parent
-			skel[ "parentrepo" ].value = to_repo
+			skel[ "parententry" ].value = toParent
+			skel[ "parentrepo" ].value = toRepo
 
 			#print( "write  >%s<" % skel[ "name" ].value )
 			new_id = skel.toDB()
 
-			self._clone( from_repo, to_repo, old_id, new_id )
+			self._clone(fromRepo, toRepo, old_id, new_id)
 
 
 ## Default accesscontrol functions 
