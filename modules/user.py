@@ -483,10 +483,12 @@ class User(List):
 		else:
 			# An admin tries to add a new user.
 			self.extendAccessRights(skel)
+
 		# Unlock and require a password
-		skel.password.required = True
-		skel.password.visible = True
-		skel.password.readOnly = False
+		if "password" in skel:
+			skel.password.required = True
+			skel.password.visible = True
+			skel.password.readOnly = False
 
 		skel.name.readOnly = False  # Dont enforce readonly name in user/add
 		return skel
