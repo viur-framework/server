@@ -442,10 +442,22 @@ class relationalBone( baseBone ):
 			if self.using is not None:
 				refSkel = self._usingSkelCache
 				refSkel.setValuesCache({})
+				
 				if not refSkel.fromClient( r["reltmp"] ):
-					for k,v in refSkel.errors.items():
-						errorDict[ "%s.%s.%s" % (name,tmpList.index(r),k) ] = v
+					for k, v in refSkel.errors.items():
+						if v is None:
+							continue
+
+						bone = getattr(refSkel, k)
+
+						if self.multiple and len(tmpList) > 1:
+							errTxt = "%s#%d: %s" % (bone.descr or k, tmpList.index(r) + 1, v)
+						else:
+							errTxt = "%s: %s" % (bone.descr or k, v)
+
+						errorDict["%s.%s.%s" % (name, tmpList.index(r), k)] = errTxt
 						forceFail = True
+						
 				r["rel"] = refSkel.getValuesCache()
 			else:
 				r["rel"] = None
@@ -472,8 +484,10 @@ class relationalBone( baseBone ):
 				valuesCache[name] = val
 				if val is None:
 					errorDict[name] = "No value selected"
+
 		if len(errorDict.keys()):
-			return ReadFromClientError(errorDict, forceFail)
+			errTxt = ", ".join([v for v in errorDict.values() if v is not None])
+			return ReadFromClientError({name: errTxt}, forceFail)
 
 	def _rewriteQuery(self, name, skel, dbFilter, rawFilter ):
 		"""
