@@ -1,15 +1,24 @@
 # -*- coding: utf-8 -*-
 import utils as jinjaUtils
-from wrap import ListWrapper, SkelListWrapper
+from wrap import ListWrapper, SkelListWrapper, ThinWrapper
 
 from server import utils, request, errors, securitykey
 from server.skeleton import Skeleton, BaseSkeleton, RefSkel, skeletonByKind
 from server.bones import *
+from server.bones.stringBone import LanguageWrapper
 
 from collections import OrderedDict
 from jinja2 import Environment, FileSystemLoader, ChoiceLoader
 
 import os, logging, codecs
+
+
+from time import time
+import cProfile
+import cStringIO
+import logging
+import pstats
+
 
 class Render( object ):
 	"""
@@ -95,6 +104,7 @@ class Render( object ):
 			# We defer loading our plugins to this point to avoid circular imports
 			import env
 			Render.__haveEnvImported_ = True
+		self.tplCache = {}
 		self.parent = parent
 
 
@@ -340,6 +350,10 @@ class Render( object ):
 					}
 			else:
 				return None
+		elif (bone.type == "str" or bone.type == "text") and bone.languages:
+			l = LanguageWrapper(bone.languages)
+			l.update(skel[key])
+			return l
 		else:
 			#logging.error("RETURNING")
 			#logging.error((skel[key]))
@@ -361,12 +375,22 @@ class Render( object ):
 		#logging.error("collectSkelData %s", skel)
 		if isinstance(skel, list):
 			return [self.collectSkelData(x) for x in skel]
-		res = {}
+
+		class WrapperDict(dict):
+			def __getitem__(self, item):
+				if item not in self and "__"+item in self:
+					self[item] = self["__"+item]
+				return super(WrapperDict, self).__getitem__(item)
+
+		res = WrapperDict()
 		for key, bone in skel.items():
 			val = self.renderBoneValue(bone, skel, key)
-			res[key] = val
-			if isinstance(res[key], list):
-				res[key] = ListWrapper(res[key])
+			if callable(val):
+				res["__"+key] = val
+			else:
+				res[key] = val
+				if isinstance(res[key], list):
+					res[key] = ListWrapper(res[key])
 		return res
 
 	def add(self, skel, tpl=None, params=None, *args, **kwargs):
@@ -547,10 +571,23 @@ class Render( object ):
 		except errors.HTTPException as e: #Not found - try default fallbacks FIXME: !!!
 			tpl = "list"
 		template = self.getEnv().get_template( self.getTemplateFileName( tpl ) )
+
 		resList = []
 		for skel in skellist:
-			resList.append( self.collectSkelData(skel) )
+			#resList.append( self.collectSkelData(skel) )
+			resList.append(ThinWrapper(skel, skel.getValuesCache(), self))
+
+		#profile = cProfile.Profile()
+		#res = profile.runcall(template.render, skellist=SkelListWrapper(resList, skellist), params=params, **kwargs)
+		#stream = cStringIO.StringIO()
+		#stats = pstats.Stats(profile, stream=stream)
+		##stats.sort_stats('cumulative').print_stats()
+		#stats.sort_stats('tottime').print_stats()
+		#logging.info('Profile data:\n%s', stream.getvalue())
+
+
 		return template.render(skellist=SkelListWrapper(resList, skellist), params=params, **kwargs)
+		return res
 	
 	def listRootNodes(self, repos, tpl=None, params=None, **kwargs ):
 		"""

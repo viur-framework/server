@@ -8,6 +8,7 @@ from threading import local
 from time import time
 import inspect, os, sys, logging, copy
 from google.appengine.api import search
+import extjson
 
 try:
 	import pytz
@@ -305,6 +306,9 @@ class BaseSkeleton(object):
 			:param values: A dictionary with values.
 			:type values: dict
 		"""
+		if 1 and "valuesCache2" in values:
+			self.setValuesCache(extjson.loads(values["valuesCache2"]))
+			return
 		for bkey,_bone in self.items():
 			if isinstance( _bone, baseBone ):
 				if bkey=="key":
@@ -319,7 +323,6 @@ class BaseSkeleton(object):
 							pass
 				else:
 					_bone.unserialize( self.valuesCache, bkey, values )
-
 	def getValues(self):
 		"""
 			Returns the current bones of the Skeleton as a dictionary.
@@ -538,6 +541,9 @@ class Skeleton(BaseSkeleton):
 		self.setValues(dbRes)
 		key = str(dbRes.key())
 		self["key"] = key
+		if not "valuesCache2" in dbRes:
+			logging.error("UPDATING valuesCache2")
+			self.toDB()
 		return (True)
 
 	def toDB(self, clearUpdateTag=False):
@@ -645,6 +651,7 @@ class Skeleton(BaseSkeleton):
 						tags += [tag for tag in _bone.getSearchTags(self.valuesCache, key) if
 						         (tag not in tags and len(tag) < 400)]
 				dbObj["viur_tags"] = tags
+			dbObj["valuesCache2"] = extjson.dumps(self.getValuesCache())
 			db.Put(dbObj)  # Write the core entry back
 			# Now write the blob-lock object
 			blobList = skel.preProcessBlobLocks(blobList)

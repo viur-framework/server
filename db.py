@@ -5,6 +5,7 @@ from google.appengine.api import memcache
 from google.appengine.api import search
 from server.config import conf
 import logging
+import extjson
 
 
 """
@@ -856,10 +857,15 @@ class Query( object ):
 			return( res )
 		for e in dbRes:
 			#s = self.srcSkel.clone()
-			valueCache = {}
-			self.srcSkel.setValuesCache(valueCache)
-			self.srcSkel.setValues(e)
-			res.append( self.srcSkel.getValuesCache() )
+			if 1 and "valuesCache2" in e:
+				res.append(extjson.loads(e["valuesCache2"]))
+				#logging.error("FromValuesCache")
+			else:
+				#logging.error("NoValuesCache")
+				valueCache = {}
+				self.srcSkel.setValuesCache(valueCache)
+				self.srcSkel.setValues(e)
+				res.append( self.srcSkel.getValuesCache() )
 		try:
 			c = self.datastoreQuery.GetCursor()
 			if c:

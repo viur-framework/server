@@ -25,7 +25,7 @@
  See file LICENSE for more information.
 """
 
-__version__ = (2, 1, 0)  # Which API do we expose to our application
+__version__ = (2, 0, 0)  # Which API do we expose to our application
 
 import sys, traceback, os, inspect
 
@@ -523,6 +523,7 @@ class BrowseHandler(webapp.RequestHandler):
 
 
 	def findAndCall( self, path, *args, **kwargs ): #Do the actual work: process the request
+		t1 = time()
 		# Prevent Hash-collision attacks
 		assert len( self.request.arguments() ) < conf["viur.maxPostParamsCount"]
 		# Fill the (surprisingly empty) kwargs dict with named request params
@@ -547,6 +548,7 @@ class BrowseHandler(webapp.RequestHandler):
 		path = urlparse.urlparse( path ).path
 		self.pathlist = [ urlparse.unquote( x ) for x in path.strip("/").split("/") ]
 		caller = conf["viur.mainApp"]
+
 		idx = 0 #Count how may items from *args we'd have consumed (so the rest can go into *args of the called func
 		for currpath in self.pathlist:
 			if "canAccess" in dir( caller ) and not caller.canAccess():
@@ -577,6 +579,8 @@ class BrowseHandler(webapp.RequestHandler):
 					caller = caller.index
 			else:
 				raise( errors.MethodNotAllowed() )
+		t2 = time()
+		logging.error("Find-Time: %s", (t2-t1))
 		# Check for forceSSL flag
 		if not self.internalRequest \
 			and "forceSSL" in dir( caller ) \
@@ -608,7 +612,10 @@ class BrowseHandler(webapp.RequestHandler):
 		try:
 			if (conf["viur.debug.traceExternalCallRouting"] and not self.internalRequest) or conf["viur.debug.traceInternalCallRouting"]:
 				logging.debug("Calling %s with args=%s and kwargs=%s" % (str(caller),unicode(args), unicode(kwargs)))
+			t1 = time()
 			self.response.out.write( caller( *self.args, **self.kwargs ) )
+			t2 = time()
+			logging.error("Call time: %s", (t2-t1))
 		except TypeError as e:
 			if self.internalRequest: #We provide that "service" only for requests originating from outside
 				raise

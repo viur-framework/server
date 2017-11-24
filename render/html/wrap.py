@@ -37,3 +37,36 @@ class SkelListWrapper(ListWrapper):
 		else:
 			self.cursor = src.cursor
 			self.customQueryInfo = src.customQueryInfo
+
+
+
+class ThinWrapper(object):
+	def __init__(self, skel, valuesCache, render):
+		"""
+			@param baseSkel: The baseclass for all entries in this list
+		"""
+		super(ThinWrapper, self).__init__()
+		self.skel = skel
+		self.valuesCache = valuesCache
+		self.render = render
+		self.cache = {}
+
+	def __contains__(self, item):
+		return item in self.skel
+
+	def __getattr__(self, item):
+		if item not in self.cache:
+			if item not in self.skel:
+				self.cache[item] = None
+				return None
+			self.skel.setValuesCache(self.valuesCache)
+			val = self.render.renderBoneValue(getattr(self.skel, item), self.skel, item)
+			self.cache[item] = val
+			return val
+		return self.cache[item]
+
+	def __getitem__(self, item):
+		return self.__getattr__(item)
+
+	def keys(self):
+		return self.skel.keys()

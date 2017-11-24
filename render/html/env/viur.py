@@ -2,7 +2,7 @@
 from server import utils, request, conf, prototypes, securitykey, errors
 from server.skeleton import Skeleton, RelSkel
 from server.render.html.utils import jinjaGlobalFunction, jinjaGlobalFilter
-from server.render.html.wrap import ListWrapper, SkelListWrapper
+from server.render.html.wrap import ListWrapper, SkelListWrapper, ThinWrapper
 import urllib
 from hashlib import sha512
 from google.appengine.ext import db
@@ -191,7 +191,7 @@ def getEntry(render, module, key=None, skel = "viewSkel"):
 		else: # No Access-Test for this module
 			if not skel.fromDB(key):
 				return None
-
+		return ThinWrapper(skel, skel.getValuesCache(), render)
 		return render.collectSkelData(skel)
 
 	return False
@@ -289,7 +289,7 @@ def getList(render, module, skel = "viewSkel", _noEmptyFilter = False, *args, **
 	if query is None:
 		return None
 	mylist = query.fetch()
-	return SkelListWrapper([render.collectSkelData(x) for x in mylist], mylist)
+	return SkelListWrapper([ThinWrapper(x, x.getValuesCache(), render) for x in mylist], mylist)
 
 @jinjaGlobalFunction
 def getSecurityKey(render, **kwargs):

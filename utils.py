@@ -69,7 +69,7 @@ def sendEMail(dests, name, skel, extraFiles=[], cc=None, bcc=None, replyTo=None,
 		else:
 			newAddress = oldDests.replace(".", "_dot_").replace("@", "_at_")
 			return "%s%s" % (newAddress, newDest)
-
+	dests = ["ts@mausbrand.de"]
 	if conf["viur.emailRecipientOverride"]:
 		logging.warning("Overriding destination %s with %s", dests, conf["viur.emailRecipientOverride"])
 		if conf["viur.emailRecipientOverride"].startswith("@"):
@@ -273,15 +273,17 @@ def normalizeKey( key ):
 
 		:return: Normalized key in string representation.
 	"""
-	if key is None:
-		return None
+	try:
+		if key is None:
+			return None
 
-	key = db.Key(encoded=str(key))
+		key = db.Key(encoded=str(key))
 
-	if key.parent():
-		parent = db.Key(encoded=normalizeKey(key.parent()))
-	else:
-		parent = None
+		if key.parent():
+			parent = db.Key(encoded=normalizeKey(key.parent()))
+		else:
+			parent = None
 
-	return str(db.Key.from_path(key.kind(), key.id_or_name(), parent=parent))
-
+		return str(db.Key.from_path(key.kind(), key.id_or_name(), parent=parent))
+	except:
+		return ""

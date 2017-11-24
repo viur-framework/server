@@ -3,6 +3,11 @@ from server import utils, session, errors, conf, securitykey, request
 from server import forcePost, forceSSL, exposed, internalExposed
 
 from server.prototypes import BasicApplication
+from time import time
+import cProfile
+import cStringIO
+import logging
+import pstats
 
 import logging
 
@@ -176,7 +181,21 @@ class List(BasicApplication):
 		if query is None:
 			raise errors.Unauthorized()
 		res = query.fetch()
-		return self.render.list( res )
+
+		#profile = cProfile.Profile()
+		#res = profile.runcall(self.render.list, res)
+		#stream = cStringIO.StringIO()
+		#stats = pstats.Stats(profile, stream=stream)
+		##stats.sort_stats('cumulative').print_stats()
+		#stats.sort_stats('tottime').print_stats()
+		#logging.info('Profile data:\n%s', stream.getvalue())
+
+
+		res = self.render.list( res )
+		#t2 = time()
+		#logging.error("Render time: %s", (t2-t1))
+		return res
+
 
 	@forceSSL
 	@exposed
