@@ -207,6 +207,30 @@ class Hierarchy(BasicApplication):
 
 		return False
 
+	def getAvailableRootNodes(self, *args, **kwargs):
+		"""
+		Default function for providing a list of root node items.
+
+		This list is requested by several module-internal functions and should be
+		overridden in most cases to provide a custom functionality. This stub
+		should serve as a reference implementation to provide a suitable default
+		behavior.
+
+		:param args: Can be used in custom implementations.
+		:param kwargs: Can be used in custom implementations.
+
+		:return: Returns a list of dicts which must provide a "key" and a "name" entry with \
+					respective information.
+		:rtype: list of dict
+		"""
+		q = db.Query(self.rootKindName)
+
+		ret = [{"key": str(e.key()),
+				"name": e.get("name", str(e.key().id_or_name()))}
+		            for e in q.run(limit=25)]
+
+		return ret
+
 	@callDeferred
 	def deleteRecursive(self, key):
 		"""
