@@ -42,11 +42,18 @@ class Hierarchy(BasicApplication):
 	application. For more information, refer to the function :func:`_resolveSkel`.
 	:vartype kindName: str
 
+	:ivar rootKindName:  Name of the kind of data entities that are managed by the application as \
+	hierarchy root nodes. Usually this kind of item is managed apart from the hierarchy items. \
+	If left unset, the kind is automatically determined using the hierarchy items kind name with an \
+	appended "_rootNode" string. This default behavior can be overridden by setting this member variable.
+	:vartype rootKindName: str
+
 	:ivar adminInfo: todo short info on how to use adminInfo.
 	:vartype adminInfo: dict | callable
 	"""
 
 	accessRights = ["add", "edit", "view", "delete"]  # Possible access rights for this app
+	rootKindName = None # kindName of the root nodes. This is automatically determined if left None.
 
 	def adminInfo(self):
 		return {
@@ -57,6 +64,10 @@ class Hierarchy(BasicApplication):
 
 	def __init__(self, moduleName, modulePath, *args, **kwargs):
 		super(Hierarchy, self).__init__(moduleName, modulePath, *args, **kwargs)
+
+		# Set the rootKindName if not overridden.
+		if self.rootKindName is None:
+			self.rootKindName = self.viewSkel().kindName + "_rootNode"
 
 	def viewSkel(self, *args, **kwargs):
 		"""
@@ -114,7 +125,10 @@ class Hierarchy(BasicApplication):
 		while repo and "parententry" in repo:
 			repo = db.Get(repo["parententry"])
 
-		assert repo and repo.key().kind() == self.viewSkel().kindName + "_rootNode"
+		print(self.rootKindName)
+		print(repo.key().kind())
+
+		assert repo and repo.key().kind() == self.rootKindName
 		return repo
 
 	def isValidParent(self, parent):
@@ -149,8 +163,7 @@ class Hierarchy(BasicApplication):
 		thisuser = conf["viur.mainApp"].user.getCurrentUser()
 		if thisuser:
 			key = "rep_user_%s" % str(thisuser["key"])
-			kindName = self.viewSkel().kindName + "_rootNode"
-			return db.GetOrInsert(key, kindName=kindName, creationdate=datetime.now(),
+			return db.GetOrInsert(key, kindName=self.rootKindName, creationdate=datetime.now(),
 			                      rootNode=1, user=str(thisuser["key"]))
 
 		return None
@@ -164,8 +177,7 @@ class Hierarchy(BasicApplication):
 		:rtype: :class:`server.db.Entity`
 		"""
 		key = "rep_module_repo"
-		kindName = self.viewSkel().kindName + "_rootNode"
-		return db.GetOrInsert(key, kindName=kindName, creationdate=datetime.now(), rootNode=1)
+		return db.GetOrInsert(key, kindName=self.rootKindName, creationdate=datetime.now(), rootNode=1)
 
 	def isOwnUserRootNode(self, repo):
 		"""
@@ -380,7 +392,7 @@ class Hierarchy(BasicApplication):
 			if str(currLevel.key()) == item:
 				break
 
-			if currLevel.key().kind() == self.viewSkel().kindName + "_rootNode":
+			if currLevel.key().kind() == self.rootKindName:
 				# We reached a rootNode
 				isValid = True
 				break
