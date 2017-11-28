@@ -130,10 +130,7 @@ class Hierarchy(BasicApplication):
 		repo = db.Get(entryKey)
 		while repo and "parententry" in repo:
 			repo = db.Get(repo["parententry"])
-
-		print(self.rootKindName)
-		print(repo.key().kind())
-
+			
 		assert repo and repo.key().kind() == self.rootKindName
 		return repo
 
