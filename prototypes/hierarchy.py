@@ -306,9 +306,7 @@ class Hierarchy(BasicApplication):
 
 		res = []
 
-		lastChildren = []
-
-		for x in range(0, 99):
+		for _ in range(0, 99):
 			q = db.Query(self.viewSkel().kindName)
 			q.filter("parententry =", str(key))
 			q.order("sortindex")
@@ -418,7 +416,7 @@ class Hierarchy(BasicApplication):
 		isValid = False
 		currLevel = db.Get(dest)
 
-		for x in range(0, 99):
+		for _ in range(0, 99):
 			if str(currLevel.key()) == item:
 				break
 
@@ -692,7 +690,7 @@ class Hierarchy(BasicApplication):
 			raise errors.PreconditionFailed()
 		skel["parententry"] = str(parent)
 		skel["parentrepo"] = str(self.getRootNode(parent).key())
-		key = skel.toDB()
+		skel.toDB()
 		self.onItemAdded(skel)
 		self.onItemChanged(skel)
 		return self.render.addItemSuccess(skel)
