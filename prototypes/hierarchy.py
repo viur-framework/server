@@ -303,7 +303,7 @@ class Hierarchy(BasicApplication):
 
 		res = []
 
-		for _ in range(0, 99):
+		for x in range(0, 99):
 			q = db.Query(self.viewSkel().kindName)
 			q.filter("parententry =", str(key))
 			q.order("sortindex")
@@ -413,7 +413,7 @@ class Hierarchy(BasicApplication):
 		isValid = False
 		currLevel = db.Get(dest)
 
-		for _ in range(0, 99):
+		for x in range(0, 99):
 			if str(currLevel.key()) == item:
 				break
 
