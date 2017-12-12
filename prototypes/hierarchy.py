@@ -701,7 +701,7 @@ class Hierarchy(BasicApplication):
 			raise errors.PreconditionFailed()
 
 		self._clone(fromRepo, toRepo, fromParent, toParent)
-		return self.render.cloneSuccess(*args, **kwargs)
+		return self.render.cloneSuccess()
 
 	@callDeferred
 	def _clone(self, fromRepo, toRepo, fromParent, toParent):
@@ -723,6 +723,7 @@ class Hierarchy(BasicApplication):
 			for k, v in skel.items():
 				logging.debug("BEHIND %s = >%s<", (k, skel[k]))
 
+			skel["key"] = None
 			skel["parententry"] = toParent
 			skel["parentrepo"] = toRepo
 
