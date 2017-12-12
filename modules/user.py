@@ -320,7 +320,10 @@ class TimeBasedOTP(object):
 		otptoken = stringBone(descr="Token", required=True, caseSensitive=False, indexed=True)
 
 	def render(self, **params):
-		return self.userModule.render.edit(self.otpSkel(), action="otp", tpl=self.userModule.loginSecondFactorTemplate, **params)
+		return self.userModule.render.edit(self.otpSkel(),
+		                                    action="otp",
+		                                    tpl=self.userModule.loginSecondFactorTemplate,
+		                                    params=params)
 
 	def startProcessing(self, userKey):
 		user = db.Get(userKey)
