@@ -566,7 +566,7 @@ class Skeleton(BaseSkeleton):
 				dbObj = db.Entity(skel.kindName)
 				oldBlobLockObj = None
 			else:
-				k = db.Key(key)
+				k = db.Key(encoded=str(key))
 				assert k.kind() == skel.kindName, "Cannot write to invalid kind!"
 				try:
 					dbObj = db.Get(k)
