@@ -9,6 +9,7 @@ from server.bones import baseBone, numericBone
 from server.prototypes import BasicApplication
 from server.skeleton import Skeleton
 from server.tasks import callDeferred
+from server.cache import flushCache
 
 class HierarchySkel(Skeleton):
 	parententry = baseBone(descr="Parent", visible=False, indexed=True, readOnly=True)
@@ -1013,6 +1014,7 @@ class Hierarchy(BasicApplication):
 		.. seealso:: :func:`add`
 		"""
 		logging.info("Entry added: %s" % skel["key"])
+		flushCache(kind=skel.kindName)
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"]))
@@ -1030,6 +1032,7 @@ class Hierarchy(BasicApplication):
 		.. seealso:: :func:`edit`
 		"""
 		logging.info("Entry changed: %s" % skel["key"])
+		flushCache(key=skel["key"])
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"]))
@@ -1061,6 +1064,7 @@ class Hierarchy(BasicApplication):
 		.. seealso:: :func:`delete`
 		"""
 		logging.info("Entry deleted: %s" % skel["key"])
+		flushCache(key=skel["key"])
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"]))
@@ -1079,6 +1083,7 @@ class Hierarchy(BasicApplication):
 		"""
 		logging.debug("data: %r, %r", skel, skel.keys())
 		logging.info("Entry reparented: %s" % skel["key"])
+		flushCache(key=skel["key"])
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"]))
@@ -1108,6 +1113,7 @@ class Hierarchy(BasicApplication):
 		.. seealso:: :func:`setIndex`
 		"""
 		logging.info("Entry has a new index: %s" % skel["key"])
+		flushCache(key=skel["key"])
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"]))
@@ -1125,6 +1131,7 @@ class Hierarchy(BasicApplication):
 		.. seealso:: :func:`_clone`
 		"""
 		logging.info("Entry cloned: %s" % skel["key"])
+		flushCache(key=skel.kindName)
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"]))

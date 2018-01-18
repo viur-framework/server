@@ -20,7 +20,38 @@ __cacheLockTime__ = 42 #Prevent an entity from creeping into the cache for 42 Se
 __cacheTime__ = 15*60 #15 Mins
 __CacheKeyPrefix__ ="viur-db-cache:" #Our Memcache-Namespace. Dont use that for other purposes
 __MemCacheBatchSize__ = 30
+__accessedDataLog__ = set()  # Keep track of accessed data for the cache module
 
+
+def startAccessDataLog():
+	"""
+		Clears our internal access log (which keeps track of which entries have been accessed in the current
+		request). The old set of accessed entries is returned so that it can be restored with
+		:func:`server.db.popAccessData` in case of nested caching.
+
+	:return: Set of old accessed entries
+	:rtype: set
+	"""
+	global __accessedDataLog__
+	old = __accessedDataLog__
+	__accessedDataLog__ = set()
+	return old or set()
+
+def popAccessData(outerAccessLog=None):
+	"""
+		Retrieves the set of entries accessed so far. If :func:`server.db.startAccessDataLog`, it will only
+		include entries that have been accessed after that call, otherwise all entries accessed in the current
+		request. If you called :func:`server.db.startAccessDataLog` before, you can re-apply the old log using
+		the outerAccessLog param.
+	:param outerAccessLog: State of your log returned by :func:`server.db.startAccessDataLog`
+	:type outerAccessLog: set | None
+	:return: Set of entries accessed
+	:rtype: set
+	"""
+	global __accessedDataLog__
+	res = __accessedDataLog__
+	__accessedDataLog__ = (outerAccessLog or set()).union(res)
+	return res
 
 def PutAsync( entities, **kwargs ):
 	"""
@@ -30,6 +61,7 @@ def PutAsync( entities, **kwargs ):
 		returns an asynchronous object. Call ``get_result()`` on the return value to
 		block on the call and get the results.
 	"""
+	global __accessedDataLog__
 	if isinstance( entities, Entity ):
 		entities._fixUnindexedProperties()
 	elif isinstance( entities, List ):
@@ -40,11 +72,17 @@ def PutAsync( entities, **kwargs ):
 		if isinstance( entities, Entity ): #Just one:
 			if entities.is_saved(): #Its an update
 				memcache.delete( str( entities.key() ), namespace=__CacheKeyPrefix__, seconds=__cacheLockTime__  )
+				__accessedDataLog__.add("key:"+str(entities.key()))
+			else:
+				__accessedDataLog__.add("kind:"+entities.kind())
 		elif isinstance( entities, list ):
 			for entity in entities:
 				assert isinstance( entity, Entity )
 				if entity.is_saved(): #Its an update
 					memcache.delete( str( entity.key() ), namespace=__CacheKeyPrefix__, seconds=__cacheLockTime__  )
+					__accessedDataLog__.add("key:"+str(entities.key()))
+				else:
+					__accessedDataLog__.add("kind:" + entities.kind())
 	return( datastore.PutAsync( entities, **kwargs ) )
 
 def Put( entities, **kwargs ):
@@ -68,6 +106,7 @@ def Put( entities, **kwargs ):
 
 		:raises: :exc:`TransactionFailedError`, if the action could not be committed.
 	"""
+	global __accessedDataLog__
 	if isinstance( entities, Entity ):
 		entities._fixUnindexedProperties()
 	elif isinstance( entities, list ):
@@ -78,11 +117,17 @@ def Put( entities, **kwargs ):
 		if isinstance( entities, Entity ): #Just one:
 			if entities.is_saved(): #Its an update
 				memcache.delete( str( entities.key() ), namespace=__CacheKeyPrefix__, seconds=__cacheLockTime__  )
+				__accessedDataLog__.add("key:"+str(entities.key()))
+			else:
+				__accessedDataLog__.add("kind:"+entities.kind())
 		elif isinstance( entities, list ):
 			for entity in entities:
 				assert isinstance( entity, Entity )
 				if entity.is_saved(): #Its an update
 					memcache.delete( str( entity.key() ), namespace=__CacheKeyPrefix__, seconds=__cacheLockTime__  )
+					__accessedDataLog__.add("key:" + str(entities.key()))
+				else:
+					__accessedDataLog__.add("kind:" + entities.kind())
 	return( datastore.Put( entities, **kwargs ) )
 	
 def GetAsync( keys, **kwargs ):
@@ -93,6 +138,7 @@ def GetAsync( keys, **kwargs ):
 		returns an asynchronous object. Call ``get_result()`` on the return value to
 		block on the call and get the results.
 	"""
+	global __accessedDataLog__
 	class AsyncResultWrapper:
 		"""
 			Wraps an result thats allready there into something looking
@@ -106,10 +152,16 @@ def GetAsync( keys, **kwargs ):
 	if conf["viur.db.caching" ]>0 and not datastore.IsInTransaction():
 		if isinstance( keys, datastore_types.Key ) or isinstance( keys, basestring ): #Just one:
 			res = memcache.get( str(keys), namespace=__CacheKeyPrefix__ )
+			__accessedDataLog__.add("key:" + str(keys))
 			if res:
 				return( AsyncResultWrapper( res ) )
 	#Either the result wasnt found, or we got a list of keys to fetch;
 	# --> no caching possible
+	if isinstance(keys, list):
+		for key in keys:
+			__accessedDataLog__.add("key:" + str(key))
+	else:
+		__accessedDataLog__.add("key:" + str(keys))
 	return( datastore.GetAsync( keys, **kwargs ) )
 	
 def Get( keys, **kwargs ):
@@ -138,8 +190,10 @@ def Get( keys, **kwargs ):
 		:returns: Entity or list of Entity objects corresponding to the specified key(s).
 		:rtype: :class:`server.db.Entity` | list of :class:`server.db.Entity`
 	"""
+	global __accessedDataLog__
 	if conf["viur.db.caching" ]>0  and not datastore.IsInTransaction():
 		if isinstance( keys, datastore_types.Key ) or isinstance( keys, basestring ): #Just one:
+			__accessedDataLog__.add("key:"+str(keys))
 			res = memcache.get( str(keys), namespace=__CacheKeyPrefix__ )
 			if not res: #Not cached - fetch and cache it :)
 				res = Entity.FromDatastoreEntity( datastore.Get( keys, **kwargs ) )
@@ -148,6 +202,8 @@ def Get( keys, **kwargs ):
 			return( res )
 		#Either the result wasnt found, or we got a list of keys to fetch;
 		elif isinstance( keys,list ):
+			for key in keys:
+				__accessedDataLog__.add("key:"+str(key))
 			#Check Memcache first
 			cacheRes = {}
 			tmpRes = []
@@ -180,8 +236,11 @@ def Get( keys, **kwargs ):
 				logging.debug( "Fetched a result-set from Datastore: %s total, %s from cache, %s from datastore" % (len(tmpRes),len( cacheRes.keys()), len( dbRes ) ) )
 			return( tmpRes )
 	if isinstance( keys, list ):
+		for key in keys:
+			__accessedDataLog__.add("key:" + str(key))
 		return( [ Entity.FromDatastoreEntity(x) for x in datastore.Get( keys, **kwargs ) ] )
 	else:
+		__accessedDataLog__.add("key:" + str(keys))
 		return( Entity.FromDatastoreEntity( datastore.Get( keys, **kwargs ) ) )
 
 def GetOrInsert( key, kindName=None, parent=None, **kwargs ):
@@ -205,7 +264,8 @@ def GetOrInsert( key, kindName=None, parent=None, **kwargs ):
 		:returns: Returns the wanted Entity.
 		:rtype: server.db.Entity
 	"""
-
+	global __accessedDataLog__
+	__accessedDataLog__.add("key:" + str(key))
 	def txn( key, kwargs ):
 		try:
 			res = datastore.Get( key )
@@ -280,6 +340,7 @@ class Query( object ):
 	"""
 	
 	def __init__(self, kind, srcSkelClass=None, *args, **kwargs ):
+		global __accessedDataLog__
 		super( Query, self ).__init__( )
 		self.datastoreQuery = datastore.Query( kind, *args, **kwargs )
 		self.srcSkel = srcSkelClass
@@ -291,6 +352,7 @@ class Query( object ):
 		self._calculateInternalMultiQueryAmount = None # Some (Multi-)Queries need a different amount of results per subQuery than actually returned
 		self.customQueryInfo = {} # Allow carrying custom data along with the query. Currently only used by spartialBone to record the guranteed correctnes
 		self.origKind = kind
+		__accessedDataLog__.add("kind:"+kind)
 
 	def setFilterHook(self, hook):
 		"""

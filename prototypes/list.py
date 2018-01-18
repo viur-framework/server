@@ -3,6 +3,7 @@ from server import utils, session, errors, conf, securitykey, request
 from server import forcePost, forceSSL, exposed, internalExposed
 
 from server.prototypes import BasicApplication
+from server.cache import flushCache
 
 import logging
 
@@ -487,7 +488,7 @@ class List(BasicApplication):
 		.. seealso:: :func:`add`
 		"""
 		logging.info("Entry added: %s" % skel["key"] )
-
+		flushCache(kind=skel.kindName)
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"] ) )
@@ -506,7 +507,7 @@ class List(BasicApplication):
 		.. seealso:: :func:`edit`
 		"""
 		logging.info("Entry changed: %s" % skel["key"] )
-
+		flushCache(key=skel["key"])
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"] ) )
@@ -539,6 +540,7 @@ class List(BasicApplication):
 		.. seealso:: :func:`delete`
 		"""
 		logging.info("Entry deleted: %s" % skel["key"] )
+		flushCache(key=skel["key"])
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"] ) )

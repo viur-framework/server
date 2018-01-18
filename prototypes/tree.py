@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from server import db, utils, errors, session, conf, securitykey
 from server import forcePost, forceSSL, exposed, internalExposed
-
+from server.cache import flushCache
 from server.prototypes import BasicApplication
 from server.bones import baseBone, numericBone
 from server.skeleton import Skeleton, skeletonByKind
@@ -830,6 +830,7 @@ class Tree(BasicApplication):
 		.. seealso:: :func:`add`
 		"""
 		logging.info("Entry added: %s" % skel["key"] )
+		flushCache(kind=skel.kindName)
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"] ) )
@@ -846,7 +847,8 @@ class Tree(BasicApplication):
 
 		.. seealso:: :func:`edit`
 		"""
-		logging.info("Entry changed: %s" % skel["key"] )
+		logging.info("Entry changed: %s" % skel["key"])
+		flushCache(key=skel["key"])
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"] ) )
@@ -882,6 +884,7 @@ class Tree(BasicApplication):
 		.. seealso:: :func:`delete`
 		"""
 		logging.info("Entry deleted: %s (%s)" % ( skel["key"], type(skel) ) )
+		flushCache(key=skel["key"])
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"] ) )

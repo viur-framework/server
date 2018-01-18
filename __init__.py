@@ -53,6 +53,8 @@ from time import time
 # Copy our Version into the config so that our renders can access it
 conf["viur.version"] = __version__
 
+dbModule = None  # Reference to the db module we can't import here to avoid circular imports
+
 ### Multi-Language Part
 try:
 	import translations
@@ -118,7 +120,7 @@ def translate( key, **kwargs ):
 	:return: Translated text or key, with replaced placeholders, if given.
 	:rtype: str
 	"""
-
+	global dbModule
 	try:
 		lang = request.current.get().language
 	except:
@@ -150,9 +152,8 @@ def translate( key, **kwargs ):
 		if key.lower() in langDict.keys():
 			res = langDict[ key.lower() ]
 
-	if res is None and conf["viur.logMissingTranslations"]:
-		from server import db
-		db.GetOrInsert( key="%s-%s" % ( key, str( lang )),
+	if res is None and conf["viur.logMissingTranslations"] and dbModule:
+		dbModule.GetOrInsert( key="%s-%s" % ( key, str( lang )),
 		                kindName="viur-missing-translations",
 		                langkey=key, lang=lang )
 
@@ -232,6 +233,10 @@ def buildApp( config, renderers, default=None, *args, **kwargs ):
 		(=> /user instead of /jinja2/user)
 		:type default: str
 	"""
+	global dbModule
+	from server import db
+	dbModule = db
+
 	class ExtendableObject( object ):
 		pass
 		
@@ -332,16 +337,12 @@ class BrowseHandler(webapp.RequestHandler):
 	"""
 	
 	def get(self, path="/", *args, **kwargs): #Accept a HTTP-GET request
-		t1 = time()
 		if path=="_ah/start" or path=="_ah/warmup": #Warmup request
 			self.response.out.write("OK")
 			return
 
 		self.isPostRequest = False
 		self.processRequest( path, *args, **kwargs )
-		t2 = time()
-		#self.response.clear()
-		#self.response.out.write(str(t2-t1))
 
 	def post(self, path="/", *args, **kwargs): #Accept a HTTP-POST request
 		self.isPostRequest = True
@@ -459,6 +460,7 @@ class BrowseHandler(webapp.RequestHandler):
 				return
 		try:
 			session.current.load( self ) # self.request.cookies )
+			dbModule.startAccessDataLog()
 			path = self.selectLanguage( path )
 			if conf["viur.requestPreprocessor"]:
 				path = conf["viur.requestPreprocessor"]( path )

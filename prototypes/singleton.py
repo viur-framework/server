@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from server import db, utils, session,  errors, conf, securitykey, exposed, forceSSL
 from server.prototypes import BasicApplication
-
+from server.cache import flushCache
 import logging
 
 class Singleton(BasicApplication):
@@ -290,6 +290,7 @@ class Singleton(BasicApplication):
 		.. seealso:: :func:`edit`
 		"""
 		logging.info("Entry changed: %s" % skel["key"] )
+		flushCache(key=skel["key"])
 		user = utils.getCurrentUser()
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"] ) )
