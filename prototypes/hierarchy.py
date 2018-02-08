@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import logging
+import logging, sys
 from datetime import datetime
 from time import time
 
@@ -14,10 +14,10 @@ from server.cache import flushCache
 class HierarchySkel(Skeleton):
 	parententry = baseBone(descr="Parent", visible=False, indexed=True, readOnly=True)
 	parentrepo = baseBone(descr="BaseRepo", visible=False, indexed=True, readOnly=True)
-	sortindex = numericBone(descr="SortIndex", mode="float", visible=False, indexed=True, readOnly=True)
+	sortindex = numericBone(descr="SortIndex", mode="float", visible=False, indexed=True, readOnly=True, max=sys.maxint)
 
 	def preProcessSerializedData(self, dbfields):
-		if not ("sortindex" in dbfields.keys() and dbfields["sortindex"]):
+		if not ("sortindex" in dbfields and dbfields["sortindex"]):
 			dbfields["sortindex"] = time()
 		return dbfields
 
@@ -112,7 +112,7 @@ class Hierarchy(BasicApplication):
 		:rtype: :class:`server.db.Entity`
 		"""
 		repo = db.Get(entryKey)
-		while repo and "parententry" in repo.keys():
+		while repo and "parententry" in repo:
 			repo = db.Get(repo["parententry"])
 
 		assert repo and repo.key().kind() == self.viewSkel().kindName + "_rootNode"
@@ -121,7 +121,7 @@ class Hierarchy(BasicApplication):
 	def isValidParent(self, parent):
 		"""
 		Checks wherever a given parent is valid.
-		
+
 		:param parent: Parent to test
 		:type parent: str
 
@@ -208,7 +208,7 @@ class Hierarchy(BasicApplication):
 		for e in entrys:
 			self.deleteRecursive(str(e.key()))
 			vs = self.editSkel()
-			vs.setValues(e, key=e.key())
+			vs.setValues(e)
 			vs.delete()
 
 
@@ -232,11 +232,11 @@ class Hierarchy(BasicApplication):
 			"""
 				Tries to return a suitable name for the given object.
 			"""
-			if "name" in obj.keys():
+			if "name" in obj:
 				return obj["name"]
 
 			skel = self.viewSkel()
-			if "name" in skel.keys():
+			if "name" in skel:
 				nameBone = skel["name"]
 
 				if (isinstance(nameBone, baseBone)
@@ -276,7 +276,7 @@ class Hierarchy(BasicApplication):
 			res = []
 
 			for obj in entryObjs:
-				if "parententry" in obj.keys():
+				if "parententry" in obj:
 					parent = str(obj["parententry"])
 				else:
 					parent = None
@@ -285,7 +285,7 @@ class Hierarchy(BasicApplication):
 					"name": getName(obj),
 					"key": str(obj.key()),
 					"parent": parent,
-					"hrk": obj["hrk"] if "hrk" in obj.keys() else None,
+					"hrk": obj["hrk"] if "hrk" in obj else None,
 					"active": (str(obj.key()) in keylist)
 				}
 
@@ -299,7 +299,7 @@ class Hierarchy(BasicApplication):
 			else:
 				item = db.Get(str(key))
 
-				if item and "parententry" in item.keys():
+				if item and "parententry" in item:
 					keylist.append(key)
 					key = item["parententry"]
 
@@ -504,14 +504,17 @@ class Hierarchy(BasicApplication):
 		if not len(key):
 			raise errors.NotAcceptable()
 		skel = self.viewSkel()
-
-		if not skel.fromDB(key):
-			raise errors.NotFound()
-
-		if not self.canView(skel):
-			raise errors.Unauthorized()
-
-		self.onItemViewed(skel)
+		if key == u"structure":
+			# We dump just the structure of that skeleton, including it's default values
+			if not self.canView(None):
+				raise errors.Unauthorized()
+		else:
+			# We return a single entry for viewing
+			if not skel.fromDB(key):
+				raise errors.NotFound()
+			if not self.canView(skel):
+				raise errors.Unauthorized()
+			self.onItemViewed(skel)
 		return self.render.view(skel)
 
 	@exposed
@@ -590,7 +593,7 @@ class Hierarchy(BasicApplication):
 		    or skey == ""  # no security key
 		    or not request.current.get().isPostRequest  # failure if not using POST-method
 		    or not skel.fromClient(kwargs)  # failure on reading into the bones
-		    or ("bounce" in list(kwargs.keys()) and kwargs["bounce"] == "1")  # review before changing
+		    or ("bounce" in kwargs and kwargs["bounce"] == "1")  # review before changing
 		    ):
 			return self.render.edit(skel)
 
@@ -640,7 +643,7 @@ class Hierarchy(BasicApplication):
 		    or skey == ""
 		    or not request.current.get().isPostRequest
 		    or not skel.fromClient(kwargs)
-		    or ("bounce" in list(kwargs.keys()) and kwargs["bounce"] == "1")
+		    or ("bounce" in kwargs and kwargs["bounce"] == "1")
 		    ):
 			return self.render.add(skel)
 
@@ -699,7 +702,7 @@ class Hierarchy(BasicApplication):
 			raise errors.PreconditionFailed()
 
 		self._clone(fromRepo, toRepo, fromParent, toParent)
-		return self.render.cloneSuccess(*args, **kwargs)
+		return self.render.cloneSuccess()
 
 	@callDeferred
 	def _clone(self, fromRepo, toRepo, fromParent, toParent):
@@ -841,12 +844,15 @@ class Hierarchy(BasicApplication):
 		- If the user has "root" access, viewing is generally allowed.
 		- If the user has the modules "view" permission (module-view) enabled, viewing is allowed.
 
+		If skel is None, it's a check if the current user is allowed to retrieve the skeleton structure
+		from this module (ie. there is or could be at least one entry that is visible to that user)
+
 		It should be overridden for a module-specific behavior.
 
 		.. seealso:: :func:`view`
 
 		:param skel: The Skeleton that should be viewed.
-		:type skel: :class:`server.skeleton.Skeleton`
+		:type skel: :class:`server.skeleton.Skeleton` | None
 
 		:returns: True, if viewing is allowed, False otherwise.
 		:rtype: bool
