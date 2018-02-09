@@ -451,34 +451,40 @@ class Query( object ):
 				# no need for us to do anything
 				return( self )
 			filter, value = r
-		if value!=None and (filter.endswith(" !=") or filter.lower().endswith(" in")):
-			if isinstance( self.datastoreQuery, datastore.MultiQuery ):
-				raise NotImplementedError("You cannot use multiple IN or != filter")
-			origQuery = self.datastoreQuery
-			queries = []
-			if filter.endswith("!="):
-				q = datastore.Query( kind=self.getKind() )
-				q[ "%s <" % filter.split(" ")[0] ] = value
-				queries.append( q )
-				q = datastore.Query( kind=self.getKind() )
-				q[ "%s >" % filter.split(" ")[0] ] = value
-				queries.append( q )
-			else: #IN filter
-				if not (isinstance( value, list ) or isinstance( value, tuple ) ):
-					raise NotImplementedError("Value must be list or tuple if using IN filter!")
-				for val in value:
+
+		if filter and value is not None:
+			if isinstance(value, datastore_types.Key):
+				value = str(value)
+
+			if filter.endswith(" !=") or filter.lower().endswith(" in"):
+				if isinstance( self.datastoreQuery, datastore.MultiQuery ):
+					raise NotImplementedError("You cannot use multiple IN or != filter")
+				origQuery = self.datastoreQuery
+				queries = []
+				if filter.endswith("!="):
 					q = datastore.Query( kind=self.getKind() )
-					q[ "%s =" % filter.split(" ")[0] ] = val
-					q.Order( *origQuery.__orderings )
+					q[ "%s <" % filter.split(" ")[0] ] = value
 					queries.append( q )
-			self.datastoreQuery = MultiQuery( queries, origQuery.__orderings )
-			for k,v in origQuery.items():
-				self.datastoreQuery[ k ] = v
-		elif filter and value!=None:
-			self.datastoreQuery[ filter ] = value
+					q = datastore.Query( kind=self.getKind() )
+					q[ "%s >" % filter.split(" ")[0] ] = value
+					queries.append( q )
+				else: #IN filter
+					if not (isinstance( value, list ) or isinstance( value, tuple ) ):
+						raise NotImplementedError("Value must be list or tuple if using IN filter!")
+					for val in value:
+						q = datastore.Query( kind=self.getKind() )
+						q[ "%s =" % filter.split(" ")[0] ] = val
+						q.Order( *origQuery.__orderings )
+						queries.append( q )
+				self.datastoreQuery = MultiQuery( queries, origQuery.__orderings )
+				for k,v in origQuery.items():
+					self.datastoreQuery[ k ] = v
+			else:
+				self.datastoreQuery[ filter ] = value
 		else:
 			raise NotImplementedError("Incorrect call to query.filter()!")
-		return( self )
+
+		return self
 
 	def order(self, *orderings):
 		"""
