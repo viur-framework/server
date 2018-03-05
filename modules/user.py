@@ -92,7 +92,7 @@ class UserPassword(object):
 		if res is None:
 			res = {"password":"", "status":0, "name":"","name.idx":""}
 
-		if "password_salt" in res.keys():  # Its the new, more secure passwd
+		if "password_salt" in res:  # Its the new, more secure passwd
 			passwd = pbkdf2(password[:conf["viur.maxPasswordLength"]], res["password_salt"])
 		else:
 			passwd = sha512(password.encode("UTF-8")+conf["viur.salt"]).hexdigest()
@@ -126,9 +126,9 @@ class UserPassword(object):
 		if not isOkay:
 			skel=self.loginSkel()
 			skel.fromClient({"name": name, "nomissing": "1"})
-			return self.userModule.render.login(skel, loginFailed=True)
+			return self.userModule.render.login(skel, params={"loginFailed": True})
 		else:
-			if not "password_salt" in res.keys(): #Update the password to the new, more secure format
+			if not "password_salt" in res: #Update the password to the new, more secure format
 				res[ "password_salt" ] = utils.generateRandomString( 13 )
 				res[ "password" ] = pbkdf2( password[ : conf["viur.maxPasswordLength"] ], res["password_salt"] )
 				db.Put(res)
@@ -140,7 +140,7 @@ class UserPassword(object):
 	def pwrecover( self, authtoken=None, skey=None, *args, **kwargs ):
 		if authtoken:
 			data = securitykey.validate(authtoken)
-			if data and isinstance(data, dict) and "userKey" in data.keys() and "password" in data.keys():
+			if data and isinstance(data, dict) and "userKey" in data and "password" in data:
 				skel = self.userModule.editSkel()
 				assert skel.fromDB(data["userKey"])
 				skel["password"] = data["password"]
@@ -233,7 +233,7 @@ class UserPassword(object):
 			or skey == "" # no skey supplied
 			or not request.current.get().isPostRequest # bail out if not using POST-method
 			or not skel.fromClient(kwargs) # failure on reading into the bones
-			or ("bounce" in list(kwargs.keys()) and kwargs["bounce"]=="1")): # review before adding
+			or ("bounce" in kwargs and kwargs["bounce"]=="1")): # review before adding
 				# render the skeleton in the version it could as far as it could be read.
 				return self.userModule.render.add(skel)
 		if not securitykey.validate(skey):
@@ -301,6 +301,7 @@ class GoogleAccount(object):
 
 class TimeBasedOTP(object):
 	windowSize = 5
+	otpTemplate = "user_login_timebasedotp"
 
 	def __init__(self, userModule, modulePath):
 		super(TimeBasedOTP, self).__init__()
@@ -313,17 +314,19 @@ class TimeBasedOTP(object):
 
 	def canHandle(self, userKey):
 		user = db.Get(userKey)
-		return all([(x in user.keys() and (x=="otptimedrift" or bool(user[x]))) for x in ["otpid", "otpkey", "otptimedrift"]])
+		return all([(x in user and (x=="otptimedrift" or bool(user[x]))) for x in ["otpid", "otpkey", "otptimedrift"]])
 
 	class otpSkel( RelSkel ):
 		otptoken = stringBone(descr="Token", required=True, caseSensitive=False, indexed=True)
 
 	def render(self, **params):
-		return self.userModule.render.edit(self.otpSkel(), action="otp", tpl=self.userModule.loginSecondFactorTemplate, **params)
+		return self.userModule.render.edit(self.otpSkel(), action="otp",
+		                                    tpl=self.userModule.loginSecondFactorTemplate,
+		                                    params=params)
 
 	def startProcessing(self, userKey):
 		user = db.Get(userKey)
-		if all([(x in user.keys() and user[x]) for x in ["otpid", "otpkey"]]):
+		if all([(x in user and user[x]) for x in ["otpid", "otpkey"]]):
 			logging.info( "OTP wanted for user" )
 			session.current["_otp_user"] = {	"uid": str(userKey),
 								"otpid": user["otpid"],
@@ -370,21 +373,21 @@ class TimeBasedOTP(object):
 		token = session.current.get("_otp_user")
 		if not token:
 			raise errors.Forbidden()
-
 		if otptoken is None:
 			return self.render()
 
 		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
-
 		if token["failures"] > 3:
 			raise errors.Forbidden("Maximum amount of authentication retries exceeded")
-
+		if len(token["otpkey"]) % 2 == 1:
+			raise errors.PreconditionFailed("The otp secret stored for this user is invalid (uneven length)")
 		validTokens = self.generateOtps(token["otpkey"], token["otptimedrift"])
 		try:
 			otptoken = int(otptoken)
 		except:
 			# We got a non-numeric token - this cant be correct
+
 			return self.render()
 
 		#logging.debug(otptoken)
@@ -423,7 +426,7 @@ class TimeBasedOTP(object):
 		"""
 		def updateTransaction(userKey, idx):
 			user = db.Get(userKey)
-			if not "otptimedrift" in user.keys() or not isinstance(user["otptimedrift"],float):
+			if not "otptimedrift" in user or not isinstance(user["otptimedrift"],float):
 				user["otptimedrift"] = 0.0
 			user["otptimedrift"] += min(max(0.1*idx,-0.3),0.3)
 			db.Put(user)
@@ -566,12 +569,12 @@ class User(List):
 
 		oldSession = {k:v for k,v in session.current.items()} #Store all items in the current session
 		session.current.reset()
-		
+
 		# Copy the persistent fields over
 		for k in conf["viur.session.persistentFieldsOnLogin"]:
-			if k in oldSession.keys():
+			if k in oldSession:
 				session.current[ k ] = oldSession[ k ]
-		
+
 		del oldSession
 		session.current["user"] = {}
 
@@ -580,11 +583,11 @@ class User(List):
 				session.current["user"][key] = res[key]
 			except:
 				pass
-		
+
 		session.current["user"]["key"] = str(res.key())
-		if not "access" in session.current["user"].keys() or not session.current["user"]["access"]:
+		if not "access" in session.current["user"] or not session.current["user"]["access"]:
 			session.current["user"]["access"] = []
-			
+
 		session.current.markChanged()
 		self.onLogin()
 
@@ -609,7 +612,7 @@ class User(List):
 
 		# Copy the persistent fields over
 		for k in conf["viur.session.persistentFieldsOnLogout"]:
-			if k in oldSession.keys():
+			if k in oldSession:
 				session.current[k] = oldSession[k]
 
 		del oldSession

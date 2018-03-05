@@ -27,18 +27,18 @@ class selectOneBone( baseBone ):
 		"""
 		super( selectOneBone, self ).__init__( defaultValue=defaultValue, *args, **kwargs )
 
-		if "_kindName" in kwargs.keys():
+		if "_kindName" in kwargs:
 			kindName = kwargs["_kindName"]
 		else:
 			kindName = "unknownKind"
 
-		if "sortBy" in kwargs.keys():
+		if "sortBy" in kwargs:
 			logging.warning("The sortBy parameter is deprecated. Please use an orderedDict for 'values' instead")
 
 		if isinstance(values, dict) and not isinstance(values, OrderedDict):
 			vals = list(values.items())
 
-			if "sortBy" in kwargs.keys():
+			if "sortBy" in kwargs:
 				sortBy = kwargs["sortBy"]
 
 				if not sortBy in ["keys","values"]:
@@ -73,14 +73,14 @@ class selectOneBone( baseBone ):
 			Otherwise our previous value is
 			left unchanged and an error-message
 			is returned.
-			
+
 			:param name: Our name in the skeleton
 			:type name: String
 			:param data: *User-supplied* request-data
 			:type data: Dict
 			:returns: None or String
 		"""
-		if name in data.keys():
+		if name in data:
 			value = data[name]
 		else:
 			value = None
@@ -94,7 +94,10 @@ class selectOneBone( baseBone ):
 
 	def buildDBFilter( self, name, skel, dbFilter, rawFilter, prefix=None ):
 		mode="str"
-		if all( [ isinstance( val, int ) for val in self.values.keys() ] ):
+		if not self.values:
+			# catching corner case if that bone has no filled values (yet)
+			raise RuntimeError()
+		elif all( [ isinstance( val, int ) for val in self.values.keys() ] ):
 			filter = dict( [ ( k, int( v ) ) for k,v in rawFilter.items() if k==name or k.startswith("%s$" % name ) ] )
 		elif all( [ isinstance( val, float ) for val in self.values.keys() ] ):
 			filter = dict( [ ( k, float( v ) ) for k,v in rawFilter.items() if k==name or k.startswith("%s$" % name ) ] )
