@@ -8,7 +8,8 @@ import string, random, base64
 from server import conf
 import logging
 from itertools import izip
-
+from google.appengine.api import urlfetch
+import json
 
 def generateRandomString( length=13 ):
 	"""
@@ -83,7 +84,10 @@ def sendEMail(dests, name, skel, extraFiles=[], cc=None, bcc=None, replyTo=None,
 	handler = conf.get("viur.emailHandler")
 
 	if handler is None:
-		handler = _GAE_sendEMail
+		if conf.get("viur.email.sendInBlue.apiKey"):
+			handler = _SIB_sendEMail
+		else:
+			handler = _GAE_sendEMail
 
 	if not callable(handler):
 		logging.warning("Invalid emailHandler configured, no email will be sent.")
@@ -93,6 +97,88 @@ def sendEMail(dests, name, skel, extraFiles=[], cc=None, bcc=None, replyTo=None,
 	logging.error("CALLING %s" % str(handler))
 
 	return handler(dests, name, skel, extraFiles=extraFiles, cc=cc, bcc=bcc, replyTo=replyTo, *args, **kwargs)
+
+
+def _SIB_sendEMail(dests, name, skel, extraFiles=[], cc=None, bcc=None, replyTo=None, *args, **kwargs):
+	"""
+	Internal function for using Send in Blue Email processing API.
+	"""
+	def splitAddress(address):
+		"""
+		Splits an Name/Address Pair as "Max Musterman <mm@example.com>" into a dict
+		{"name": "Max Musterman", "email": "mm@example.com"}
+		:param address: Name/Address pair
+		:type address: str
+		:return: Splitted dict
+		:rtype: dict
+		"""
+		posLt = address.rfind("<")
+		posGt = address.rfind(">")
+		if -1 < posLt < posGt:
+			email = address[posLt+1:posGt]
+			sname = address.replace("<%s>" % email, "", 1).strip()
+			return {"name": sname, "email": email}
+		else:
+			return {"email": address}
+
+
+	headers, data = conf["viur.emailRenderer"]( skel, name, dests,**kwargs )
+	xheader = {}
+	if "references" in headers:
+		xheader["References"] = headers["references"]
+	if "in-reply-to" in headers:
+		xheader["In-Reply-To"] = headers["in-reply-to"]
+	mailfrom = "viur@%s.appspotmail.com" % app_identity.get_application_id()
+	if "subject" in headers:
+		subject = headers["subject"].encode("UTF-8")
+	else:
+		subject = "No Subject"
+	if "from" in headers:
+		mailfrom = headers["from"]
+	if conf["viur.emailSenderOverride"]:
+		mailfrom = conf["viur.emailSenderOverride"]
+	mailfrom = splitAddress(mailfrom)
+	if replyTo:
+		replyTo = splitAddress(replyTo)
+	else:
+		replyTo = mailfrom
+	dataDict = {
+		"sender": mailfrom,
+		"to": [],
+		"htmlContent": data,
+		"subject": subject,
+		"replyTo": replyTo,
+	}
+	if xheader:
+		dataDict["headers"] = xheader
+	if not isinstance(dests, list):
+		dests = [dests]
+	for dest in dests:
+		dataDict["to"].append(splitAddress(dest))
+	if bcc:
+		dataDict["bcc"] = []
+		if not isinstance(bcc, list):
+			bcc = [bcc]
+		for dest in bcc:
+			dataDict["bcc"].append(splitAddress(dest))
+	if cc:
+		dataDict["cc"] = []
+		if not isinstance(cc, list):
+			cc = [cc]
+		for dest in cc:
+			dataDict["cc"].append(splitAddress(dest))
+	payload = json.dumps(dataDict)
+	headers = {     'api-key': conf["viur.email.sendInBlue.apiKey"],
+			"Content-Type": "application/json"
+	                }
+	result = urlfetch.fetch(
+		url='https://api.sendinblue.com/v3/smtp/email',
+		payload=payload,
+		method=urlfetch.POST,
+		headers=headers,
+		validate_certificate=True)
+	assert result.status_code == 201, result.content
+	return True
 
 
 def _GAE_sendEMail(dests, name, skel, extraFiles=[], cc=None, bcc=None, replyTo=None, *args, **kwargs):
