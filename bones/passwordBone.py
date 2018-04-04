@@ -7,6 +7,7 @@ from operator import xor
 from itertools import izip, starmap
 from server.config import conf
 import string, random
+from server import errors, utils
 
 def pbkdf2( password, salt, iterations=1001, keylen=42):
 	"""
@@ -80,3 +81,31 @@ class passwordBone( stringBone ):
 
 	def unserialize( self, valuesCache, name, values ):
 		return( {name: ""} )
+
+	def fromClient( self, valuesCache, name, data ):
+		"""
+			Reads a value from the client.
+			If this value is valid for this bone,
+			store this rawValue and return None.
+			Otherwise our previous value is
+			left unchanged and an error-message
+			is returned.
+
+			:param name: Our name in the :class:`server.skeleton.Skeleton`
+			:type name: str
+			:param data: *User-supplied* request-data
+			:type data: dict
+			:returns: str or None
+		"""
+		if name in data:
+			rawValue = data[name]
+		else:
+			rawValue = None
+		lastError = None
+		err = self.isInvalid(rawValue)
+		if err:  # That password it too short / too weak
+			return errors.ReadFromClientError({name: err}, forceFail=True)
+		if not rawValue and not lastError:
+			lastError = "No rawValue entered"
+		valuesCache[name] = utils.escapeString(rawValue)
+		return lastError
