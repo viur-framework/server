@@ -451,11 +451,14 @@ class BrowseHandler(webapp.RequestHandler):
 					if testUrl==reqPath:
 						isWhitelisted = True
 						break
-			if not isWhitelisted: # Some URLs need to be whitelisted (as f.e. the Tasks-Queue doesn't call using https)
-				#Redirect the user to the startpage (using ssl this time)
+			if not isWhitelisted:
+				# Some URLs need to be whitelisted (as f.e. the Tasks-Queue doesn't call using https)
 				host = self.request.host_url.lower()
-				host = host[ host.find("://")+3: ].strip(" /") #strip http(s)://
-				self.redirect( "https://%s/" % host )
+				host = host[ host.find("://")+3: ].strip(" /")  # strip http(s)://
+				if not self.isPostRequest:  # Redirect to TLS, preserving the path
+					self.redirect("https://%s%s" % (host, self.request.path))
+				else:  # Redirect the user to the startpage (using TLS this time)
+					self.redirect( "https://%s/" % host )
 				return
 		try:
 			session.current.load( self ) # self.request.cookies )
