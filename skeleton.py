@@ -731,7 +731,9 @@ class Skeleton(BaseSkeleton):
 
 			for boneName, bone in skel.items():
 				if bone.searchable:
-					fields.extend(bone.getSearchDocumentFields(self.valuesCache, boneName))
+					documentFields = bone.getSearchDocumentFields(self.valuesCache, boneName)
+					if documentFields:
+						fields.extend(documentFields)
 
 			fields = skel.getSearchDocumentFields(fields)
 			if fields:
