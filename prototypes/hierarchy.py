@@ -5,7 +5,7 @@ from time import time
 
 from server import db, utils, errors, conf, request, securitykey
 from server import forcePost, forceSSL, exposed, internalExposed
-from server.bones import baseBone, keyBone, numericBone, booleanBone
+from server.bones import baseBone, keyBone, numericBone
 from server.prototypes import BasicApplication
 from server.skeleton import Skeleton
 from server.tasks import callDeferred
@@ -13,19 +13,13 @@ from server.tasks import callDeferred
 class HierarchySkel(Skeleton):
 	parententry = keyBone(descr="Parent", visible=False, indexed=True, readOnly=True)
 	parentrepo = keyBone(descr="BaseRepo", visible=False, indexed=True, readOnly=True)
-	haschildren = booleanBone(descr="Has Children", defaultValue=False, visible=False, indexed=True, readOnly=True)
 	sortindex = numericBone(descr="SortIndex", mode="float", visible=False, indexed=True, readOnly=True, max=sys.maxint)
+
 
 	def preProcessSerializedData(self, dbfields):
 		if not ("sortindex" in dbfields and dbfields["sortindex"]):
 			dbfields["sortindex"] = time()
 		return dbfields
-
-	def toDB(self, *args, **kwargs):
-		if self["key"]:
-			self["haschildren"] = bool(db.Query(self.kindName).filter("parententry", str(self["key"])).get())
-
-		return super(HierarchySkel, self).toDB(*args, **kwargs)
 
 class Hierarchy(BasicApplication):
 	"""
@@ -200,10 +194,23 @@ class Hierarchy(BasicApplication):
 		"""
 		Default function for providing a list of root node items.
 
-		This list is requested by several module-internal functions and should be
-		overridden in most cases to provide a custom functionality. This stub
-		should serve as a reference implementation to provide a suitable default
-		behavior.
+		This list is requested by several module-internal functions and *must* be
+		overridden by a custom functionality. The default stub for this function
+		returns an empty list.
+
+		An example implementation could be the following:
+
+		.. code-block:: python
+
+				def getAvailableRootNodes(self, *args, **kwargs):
+					q = db.Query(self.rootKindName)
+
+					ret = [{"key": str(e.key()),
+							"name": e.get("name", str(e.key().id_or_name()))}
+					            for e in q.run(limit=25)]
+
+					return ret
+
 
 		:param args: Can be used in custom implementations.
 		:param kwargs: Can be used in custom implementations.
@@ -212,13 +219,8 @@ class Hierarchy(BasicApplication):
 					respective information.
 		:rtype: list of dict
 		"""
-		q = db.Query(self.rootKindName)
 
-		ret = [{"key": str(e.key()),
-				"name": e.get("name", str(e.key().id_or_name()))}
-		            for e in q.run(limit=25)]
-
-		return ret
+		return []
 
 	@callDeferred
 	def deleteRecursive(self, key):
