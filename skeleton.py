@@ -353,7 +353,7 @@ class BaseSkeleton(object):
 			raise ValueError("%s is no valid bone on this skeleton (%s)" % (boneName, str(self)))
 		return bone.setBoneValue(self.valuesCache, boneName, value, append)
 
-	def fromClient( self, data ):
+	def fromClient(self, data):
 		"""
 			Load supplied *data* into Skeleton.
 
@@ -376,18 +376,53 @@ class BaseSkeleton(object):
 		complete = True
 		super(BaseSkeleton, self).__setattr__("errors", {})
 
-		for key, _bone in self.items():
-			if _bone.readOnly:
+		# Check if amending can be performed.
+		# Amending allows for updating explicit bones without touching the bones not involved.
+		bones = None
+		amend = [boneName for boneName, boneInstance in self.items()
+		         if (boneInstance.params and bool(boneInstance.params.get("amendable", False)))]
+
+		if amend:
+			# Amending is allowed, when the parameters in data match only exactly those bones which are allowed
+			# to be amended. If any other bone that is not in the amend list occurs, the function checks for
+			# all bones.
+			allow = ["key"] + amend
+			bones = []
+
+			for key in [k for k in data.keys() if any([k == l or k.startswith("%s." % l) for l in self.keys()])]:
+				if not any([key == k or key.startswith("%s." % k) for k in allow]):
+					logging.error("Cannot use amend because of '%s'" % key)
+					bones = None
+					break
+
+				if "." in key:
+					key = key.split(".", 1)[0]
+
+				if key not in bones:
+					bones.append(key)
+
+			if bones:
+				logging.debug("bones allowed to amend = %r", bones)
+
+		if not bones:
+			bones = self.keys()
+
+		for key in bones:
+			bone = getattr(self, key)
+
+			if bone.readOnly:
 				continue
-			error = _bone.fromClient( self.valuesCache, key, data )
-			if isinstance( error, errors.ReadFromClientError ):
-				self.errors.update( error.errors )
+
+			error = bone.fromClient(self.valuesCache, key, data)
+
+			if isinstance(error, errors.ReadFromClientError):
+				self.errors.update(error.errors)
 				if error.forceFail:
 					complete = False
 			else:
-				self.errors[ key ] = error
+				self.errors[key] = error
 
-			if error  and _bone.required:
+			if error and bone.required:
 				complete = False
 				logging.info("%s throws error: %s" % (key, error))
 
@@ -396,8 +431,9 @@ class BaseSkeleton(object):
 				newVal = boneInstance.getUniquePropertyIndexValue(self.valuesCache, boneName)
 				if newVal is not None:
 					try:
-						dbObj = db.Get(db.Key.from_path("%s_%s_uniquePropertyIndex" % (self.kindName, boneName), newVal))
-						if dbObj["references"] != self["key"]: #This valus is taken (sadly, not by us)
+						dbObj = db.Get(
+							db.Key.from_path("%s_%s_uniquePropertyIndex" % (self.kindName, boneName), newVal))
+						if dbObj["references"] != self["key"]:  # This valus is taken (sadly, not by us)
 							complete = False
 							if isinstance(boneInstance.unique, unicode):
 								errorMsg = _(boneInstance.unique)
@@ -407,12 +443,12 @@ class BaseSkeleton(object):
 					except db.EntityNotFoundError:
 						pass
 
-		if( len(data) == 0
-		    or (len(data) == 1 and "key" in data)
-		    or ("nomissing" in data and str(data["nomissing"]) == "1" )):
-			super(BaseSkeleton, self).__setattr__( "errors", {} )
+		if (len(data) == 0
+				or (len(data) == 1 and "key" in data)
+				or ("nomissing" in data.keys() and str(data["nomissing"]) == "1")):
+			super(BaseSkeleton, self).__setattr__("errors", {})
 
-		return( complete )
+		return complete
 
 	def refresh(self):
 		"""
