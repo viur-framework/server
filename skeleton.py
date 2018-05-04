@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from server import db, utils, conf, errors
+from server import db, utils, conf, errors, request
 from server.bones import baseBone, boneFactory, keyBone, dateBone, selectBone, relationalBone, stringBone
 from server.tasks import CallableTask, CallableTaskBase, callDeferred
 from collections import OrderedDict
@@ -1095,3 +1095,69 @@ def processChunk(module, compact, cursor, allCount=0, notify=None):
 				utils.sendEMail([notify], txt, None)
 		except: #OverQuota, whatever
 			pass
+
+
+def getSkelForRequest(skelName, key = None, attr = None, paramName = None):
+	"""
+	Retrieves a skeleton with a key and caches it in the current request.
+
+	If no key is given, the function tries to retrieve the key for the requested object
+	from the request parameters, by preceding an "@" sign to the skelName as parameter.
+
+	So adding "@project=abc" will try to load a "project"-Skeleton with the key "abc".
+	This behavior can be overridden by specifiying a paramName that shall be used.
+
+	:param skelName: Name of the skeleton to be retrieved.
+	:type skelName: str
+
+	:param key: A key that should be used. If missing, the key will be retrieved from the \
+				current request parameters.
+	:type key: str | db.Key
+
+	:param attr: Specifies an attribute from the requested skeleton that shall be returned by \
+					getSkelForRequest(). If omitted, the entire skeleton will be returned, otherwise \
+					only the specified attribute. This is useful when using getSkelForRequest() in \
+					lambda functions.
+	:type attr: str
+
+	:param paramName: Specifies a custom parameter name that should be used when the skeleton's key \
+						is retrieved from the current request. If omitted, an automatic paramName
+						"@skelName" will be used, where the provided skelName is preceded by an "@".
+	:type paramName: str
+
+	:return: Returns the skeleton in case it could be retrieved, otherwise None. If `attr` is specified,
+				the specific attribute is returned from the retrieved skeleton.
+	"""
+	if key is None:
+		if paramName is None:
+			paramName = "@%s" % skelName
+
+		key = request.current.get().kwargs.get(paramName)
+		if key is None or not key:
+			return None
+
+	reqData = request.current.requestData()
+
+	if "%s.%s" % (skelName, key) in reqData.keys():
+		skel = reqData["%s.%s" % (skelName, key)]
+
+		if skel and attr is not None:
+			return skel[attr]
+
+		return skel
+
+	skel = skeletonByKind(skelName)
+	if skel:
+		skel = skel()
+
+		if skel.fromDB(key):
+			skel = skel.clone()
+		else:
+			skel = None
+
+	reqData["%s.%s" % (skelName, key)] = skel
+
+	if skel and attr is not None:
+		return skel[attr]
+
+	return skel
