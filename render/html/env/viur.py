@@ -213,6 +213,16 @@ def getHostUrl(render, forceSSL = False, *args, **kwargs):
 	return url
 
 @jinjaGlobalFunction
+def getCurrentUrl(render, *args, **kwargs):
+	"""
+	Jinja2 global: Returns current, full URL with protocol.
+
+	:returns: Returns the currently called URL, including protocol.
+	:rtype: str
+	"""
+	return request.current.get().request.url
+
+@jinjaGlobalFunction
 def getLanguage(render, resolveAlias = False):
 	"""
 	Jinja2 global: Returns the language used for this request.
