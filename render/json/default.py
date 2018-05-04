@@ -85,6 +85,15 @@ class DefaultRender(object):
 				"multiple": bone.multiple,
 				"languages": bone.languages
 			})
+		elif bone.type == "serial" or bone.type.startswith("serial."):
+			ret.update({
+				"minLength": bone.minLength,
+				"maxLength": bone.maxLength,
+				"validChars": bone.validChars,
+				"invalidChars": bone.invalidChars,
+				"fill": bone.fill,
+				"align": bone.align
+			})
 
 		return ret
 
