@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from server import utils
 from server.bones import stringBone
 from hashlib import sha256
 import hmac
@@ -75,9 +76,20 @@ class passwordBone( stringBone ):
 
 		return False
 
+	def fromClient( self, valuesCache, name, data ):
+		value = data.get(name)
+		if not value:
+			return "No value entered"
+
+		err = self.isInvalid(value)
+		if err:
+			return err
+
+		valuesCache[name] = value
+
 	def serialize( self, valuesCache, name, entity ):
 		if valuesCache.get(name,None) and valuesCache[name] != "":
-			salt = ''.join( [ random.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for x in range(self.saltLength) ] )
+			salt = utils.generateRandomString(self.saltLength)
 			passwd = pbkdf2( valuesCache[name][ : conf["viur.maxPasswordLength"] ], salt )
 			entity.set( name, passwd, self.indexed )
 			entity.set( "%s_salt" % name, salt, self.indexed )
