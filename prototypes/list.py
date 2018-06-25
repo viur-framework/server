@@ -1,10 +1,68 @@
 # -*- coding: utf-8 -*-
-from server import utils, session, errors, conf, securitykey, request
+from server import utils, session, errors, conf, securitykey, request, skeleton
 from server import forcePost, forceSSL, exposed, internalExposed
 
 from server.prototypes import BasicApplication
+from server.bones import booleanBone, selectBone, sortindexBone, stringBone, fileBone, textBone
 
 import logging
+
+class ContentListSkel(skeleton.Skeleton):
+	"""
+	Default list skeleton with a sortindex and active field.
+	"""
+	sortindex = sortindexBone()
+	active = booleanBone(
+		descr=u"Enabled",
+		indexed=True,
+		defaultValue=True
+	)
+
+	available = selectBone(
+		descr=u"Available for languages",
+		indexed=True,
+		multiple=True,
+		values=conf["viur.availableLanguages"],
+		languages=conf["viur.availableLanguages"]
+	) if conf["viur.availableLanguages"] else None
+
+	title = stringBone(
+		descr=u"Title",
+		searchable=True
+	)
+	content = textBone(
+		descr=u"Content",
+		searchable=True
+	)
+
+
+class SeoListSkel(skeleton.Skeleton):
+	"""
+	Default list skeleton with SEO-fields
+	"""
+
+	seo_title = stringBone(
+		descr=u"SEO Title",
+		params={"category": u"SEO"},
+		languages=conf["viur.availableLanguages"]
+	)
+	seo_description = stringBone(
+		descr=u"SEO Description",
+		languages=conf["viur.availableLanguages"],
+		params={"category": u"SEO"}
+	)
+	seo_keywords = stringBone(
+		descr=u"SEO Keywords",
+	    multiple=True,
+		languages=conf["viur.availableLanguages"],
+		params={"category": u"SEO"}
+	)
+	seo_image = fileBone(
+		descr=u"SEO Preview Image",
+		params={"category": u"SEO"}
+	)
+
+
 
 class List(BasicApplication):
 	"""
@@ -25,10 +83,14 @@ class List(BasicApplication):
 	accessRights = ["add", "edit", "view", "delete"]# Possible access rights for this app
 
 	def adminInfo(self):
+		skel = self.viewSkel()
+
 		return {
 			"name": self.__class__.__name__,        # Module name as shown in the admin tools
 			"handler": "list",                      # Which handler to invoke
-			"icon": "icons/modules/list.svg"        # Icon for this module
+			"icon": "icons/modules/list.svg",       # Icon for this module
+			"columns": [k for k in skel.keys() if k in ["sortindex", "title", "name"]] or None,
+			"filter": {"orderby": "sortindex"} if "sortindex" in skel else None
 		}
 
 	def __init__( self, moduleName, modulePath, *args, **kwargs ):
@@ -547,6 +609,22 @@ class List(BasicApplication):
 		if user:
 			logging.info("User: %s (%s)" % (user["name"], user["key"] ) )
 
+## Miscelleanous
+
+	@forceSSL
+	@forcePost
+	@exposed
+	def setSortIndex(self, key, index, skey, *args, **kwargs):
+		if not securitykey.validate(skey, acceptSessionKey=True):
+			raise errors.PreconditionFailed()
+
+		skel = self.editSkel()
+		if not skel.fromDB(key):
+			raise errors.NotFound()
+
+		skel["sortindex"] = float(index)
+		skel.toDB()
+		return self.render.renderEntry(skel, "setSortIndexSuccess")
 
 List.admin = True
 List.html = True

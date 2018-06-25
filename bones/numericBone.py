@@ -2,7 +2,9 @@
 from server.bones import baseBone
 from math import pow
 from google.appengine.api import search
-import logging
+
+import logging, sys
+from time import time
 
 class numericBone( baseBone ):
 	"""
@@ -115,3 +117,23 @@ class numericBone( baseBone ):
 		if isinstance(valuesCache.get(name), int) or isinstance(valuesCache.get(name), float):
 			return [search.NumberField(name=prefix + name, value=valuesCache[name])]
 		return []
+
+class sortindexBone(numericBone):
+	"""
+	This bone is used to store a time-based sortindex.
+	"""
+
+	type = "numeric.sortindex"
+
+	def __init__(self, descr="SortIndex", mode="float", min=0, max=sys.maxint, readOnly=True, indexed=True, visible=False, *args, **kwargs):
+		super(sortindexBone, self).__init__(
+			descr=descr,
+			mode=mode,
+			min=min,
+			max=max,
+		    readOnly=readOnly,
+			visible=visible,
+			indexed=indexed,
+		    defaultValue=time,
+			*args, **kwargs
+		)
