@@ -44,7 +44,6 @@ class HtmlSerializer( HTMLParser.HTMLParser ): #html.parser.HTMLParser
 			.replace(">", "&gt;") \
 			.replace("\"", "&quot;") \
 			.replace("'", "&#39;") \
-			.replace("\n", "") \
 			.replace("\0", "")
 		if data:
 			self.result += data
