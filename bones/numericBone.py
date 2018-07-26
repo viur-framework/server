@@ -115,3 +115,12 @@ class numericBone( baseBone ):
 		if isinstance(valuesCache.get(name), int) or isinstance(valuesCache.get(name), float):
 			return [search.NumberField(name=prefix + name, value=valuesCache[name])]
 		return []
+
+class amountBone(numericBone):
+	type = "numeric.amount"
+
+	def __init__(self, *args, **kwargs):
+		if "precision" in kwargs:
+			del kwargs["precision"] #for now always 2 digits of precision.
+
+		super(amountBone, self).__init__(precision=2, *args, **kwargs)
