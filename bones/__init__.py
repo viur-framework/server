@@ -9,7 +9,7 @@ from server.bones.colorBone import colorBone
 from server.bones.credentialBone import credentialBone
 from server.bones.selectBone import selectBone, selectOneBone, selectMultiBone, selectAccessBone
 from server.bones.booleanBone import booleanBone
-from server.bones.relationalBone import relationalBone
+from server.bones.relationalBone import relationalBone, filterRelationalBone
 from server.bones.treeItemBone import treeItemBone
 from server.bones.treeDirBone import treeDirBone
 from server.bones.hierarchyBone import hierarchyBone

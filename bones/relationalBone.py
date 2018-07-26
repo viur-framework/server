@@ -946,3 +946,110 @@ class relationalBone( baseBone ):
 				if valuesCache[name]["rel"]:
 					res.update(blobsFromSkel(self._usingSkelCache, valuesCache[name]["rel"]))
 		return res
+
+
+class filterRelationalBone(relationalBone):
+	"""
+	Implements a filtered relationalBone.
+
+	This kind of bone is working like an usual relationalBone, except that
+	it has the capability to use a list or run a callback-function that returns
+	a list to retrieve reference keys whose entries are permitted. Entries
+	that do not fit into this set are filtered out when read, and inserted
+	in when written, so that data remains consistent.
+
+	The filter is on a per-key base, provided by the filterKeys parameter.
+	This can be a callable to a function returning a list of valid keys.
+
+	This is a cooler implementation than the filtered relationalBone in
+	Duschtec² so far...
+	"""
+
+	def __init__(self, filterKeys=None, *args, **kwargs):
+		super(filterRelationalBone, self).__init__(*args, **kwargs)
+
+		self.filterKeys = filterKeys
+
+	def _filterKeys(self):
+		filterKeys = self.filterKeys
+
+		if callable(filterKeys):
+			filterKeys = filterKeys()
+
+		if filterKeys and not isinstance(filterKeys, list):
+			filterKeys = [filterKeys]
+
+		return filterKeys
+
+	def _compare(self, entry, key):
+		return str(entry["dest"]["key"]) == str(key)
+
+	def _cropValues(self, valuesCache, name):
+		filterKeys = self._filterKeys()
+		if filterKeys is None or name not in valuesCache.keys():
+			return
+
+		value = valuesCache[name]
+		if value is None:
+			return
+
+		if not self.multiple:
+			value = [value]
+
+		for entry in value[:]:
+			if not any([self._compare(entry, k) for k in filterKeys]):
+				value.remove(entry)
+
+		if not self.multiple:
+			valuesCache[name] = value[0] if value else None
+
+	def _expandValues(self, valuesCache, name, entity):
+		# filterKeys is only evaluated to trigger value expansion.
+		filterKeys = self._filterKeys()
+		if filterKeys is None or name not in valuesCache.keys():
+			return
+
+		# Load current entry from DB.
+		try:
+			centity = db.Get(entity.key())
+		except:
+			return
+
+		# Unserialize previous DB entry.
+		cvalues = {}
+		super(filterRelationalBone, self).unserialize(cvalues, name, centity)
+
+		# Compare current values against requested.
+		value = valuesCache.get(name)
+		cvalue = cvalues.get(name)
+
+		if value is None:
+			value = []
+		elif not isinstance(value, list):
+			value = [value]
+
+		if cvalue is None:
+			cvalue = []
+		elif not isinstance(cvalue, list):
+			cvalue = [cvalue]
+
+		avalue = value[:]
+
+		for centry in cvalue:
+			# This compares only by relational key - a deep value comparison is not provided, yet.
+			if not any([str(entry["dest"]["key"]) == str(centry["dest"]["key"]) for entry in value]):
+				avalue.append(centry)
+
+		if not self.multiple:
+			valuesCache[name] = avalue[0] if avalue else None
+		else:
+			valuesCache[name] = avalue if avalue else None
+
+	def unserialize(self, valuesCache, name, expando):
+		ret = super(filterRelationalBone, self).unserialize(valuesCache, name, expando)
+		self._cropValues(valuesCache, name)
+		return ret
+
+	def serialize(self, valuesCache, name, entity):
+		self._expandValues(valuesCache, name, entity)
+		return super(filterRelationalBone, self).serialize(valuesCache, name, entity)
