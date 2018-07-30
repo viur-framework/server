@@ -285,3 +285,75 @@ def normalizeKey( key ):
 
 	return str(db.Key.from_path(key.kind(), key.id_or_name(), parent=parent))
 
+
+def parseInt(value, ret=0):
+	"""
+	Parses a value as int.
+
+	This function works similar to its JavaScript-pendant, and performs
+	checks to parse most of a string value as integer.
+
+	:param value: The value that should be parsed as integer.
+	:param ret: The default return value if no integer could be parsed.
+
+	:return: Either the parse value as int, or ret if parsing not possible.
+	"""
+	if value is None:
+		return ret
+
+	if not isinstance(value, basestring):
+		value = unicode(value)
+
+	conv = ""
+	value = value.strip()
+
+	for ch in value:
+		if ch not in "+-0123456789":
+			break
+
+		conv += ch
+
+	try:
+		return int(conv)
+	except ValueError:
+		return ret
+
+
+def parseFloat(value, ret=0.0):
+	"""
+	Parses a value as float.
+
+	This function works similar to its JavaScript-pendant, and performs
+	checks to parse most of a string value as float.
+
+	:param value: The value that should be parsed as float.
+	:param ret: The default return value if no integer could be parsed.
+
+	:return: Either the parse value as float, or ret if parsing not possible.
+	"""
+	if value is None:
+		return ret
+
+	if not isinstance(value, basestring):
+		value = unicode(value)
+
+	conv = ""
+	value = value.strip()
+	dot = False
+
+	for ch in value:
+		if ch not in "+-0123456789.":
+			break
+
+		if ch == ".":
+			if dot:
+				break
+
+			dot = True
+
+		conv += ch
+
+	try:
+		return float(conv)
+	except ValueError:
+		return ret

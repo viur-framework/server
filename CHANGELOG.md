@@ -2,6 +2,12 @@
 
 This file documents any relevant changes done to ViUR server since version 2.
 
+## [develop]
+
+### Added
+- Utility functions `parseInt()` and `parseFloat()` to provide a JavaScript-style string value parsing
+
+
 ## [2.2.0 Etna] - 2018-04-23
 
 ### Added
