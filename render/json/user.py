@@ -11,8 +11,8 @@ class UserRender(default.DefaultRender): #Render user-data to json
 
 		return self.edit(skel, **kwargs)
 
-	def loginSucceeded(self, msg = "OKAY", **kwargs):
-		return json.dumps(msg)
+	def loginSucceeded(self, **kwargs):
+		return json.dumps("OKAY")
 
 	def logoutSuccess(self, **kwargs):
 		return json.dumps("OKAY")
