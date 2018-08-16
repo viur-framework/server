@@ -241,8 +241,8 @@ class dateBone( baseBone ):
 			# So we parse the whole thing, normalize it (=>get the correct DST-Settings), then replacing the parameters again
 			# and pray that the DST-Settings are still valid..
 			res = ExtendedDateTime(value.year, value.month, value.day, value.hour, value.minute, value.second, value.microsecond, tzinfo=tz)
-			res = tz.normalize( res )  # Figure out if its in DST or not
-			res = res.replace( year=value.year, month=value.month, day=value.day, hour=value.hour, minute=value.minute, second=value.second ) #Reset the original values
+			res = tz.normalize(res)  # Figure out if its in DST or not
+			res = res.replace(year=value.year, month=value.month, day=value.day, hour=value.hour, minute=value.minute, second=value.second, microsecond=value.microsecond)  # Reset the original values
 			res = utc.normalize(res.astimezone(utc))
 		return res
 
