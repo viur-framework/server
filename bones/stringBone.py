@@ -70,14 +70,14 @@ class stringBone( baseBone ):
 		if name not in valuesCache:
 			return entity
 		if not self.languages:
+			if valuesCache.get(name) is None:
+				valuesCache[name] = ""
 			if self.caseSensitive:
 				return( super( stringBone, self ).serialize( valuesCache, name, entity ) )
 			else:
 				if name != "key":
 					entity.set( name, valuesCache[name], self.indexed )
-					if valuesCache[name] is None:
-						entity.set( name+".idx", None, self.indexed )
-					elif isinstance( valuesCache[name], list ):
+					if isinstance( valuesCache[name], list ):
 						entity.set( name+".idx", [unicode( x ).lower() for x in valuesCache[name]], self.indexed )
 					else:
 						entity.set( name+".idx", unicode( valuesCache[name] ).lower(), self.indexed )
