@@ -675,10 +675,12 @@ def setup( modules, render=None, default="html" ):
 					# We have a conflict here, lets see if one skeleton is from server.*, and one from skeletons.*
 					relNewFileName = inspect.getfile(skel).replace( os.getcwd(),"" )
 					relOldFileName = inspect.getfile(conf["viur.skeletons"][ skel.kindName ]).replace( os.getcwd(),"" )
-					if relNewFileName.strip(os.path.sep).startswith("server"):
+					if any([relNewFileName.strip(os.path.sep).startswith(prefix)
+					            for prefix in conf["viur.skeletons.allowedMetaFolderPrefix"]]):
 						#The currently processed skeleton is from the server.* package
 						continue
-					elif relOldFileName.strip(os.path.sep).startswith("server"):
+					elif any([relOldFileName.strip(os.path.sep).startswith(prefix)
+					            for prefix in conf["viur.skeletons.allowedMetaFolderPrefix"]]):
 						#The old one was from server - override it
 						conf["viur.skeletons"][ skel.kindName ] = skel
 						continue
