@@ -444,21 +444,28 @@ class MetaSkel(MetaBaseSkel):
 		# Prevent duplicate definitions of skeletons
 		if cls.kindName and cls.kindName is not __undefindedC__ and cls.kindName in MetaBaseSkel._skelCache:
 			relOldFileName = inspect.getfile(MetaBaseSkel._skelCache[cls.kindName]).replace(os.getcwd(), "")
-			if relNewFileName.strip(os.path.sep).startswith("server"):
+			if any([relNewFileName.strip(os.path.sep).startswith(prefix)
+			            for prefix in conf["viur.skeletons.allowedMetaFolderPrefix"]]):
 				# The currently processed skeleton is from the server.* package
 				return
-			elif relOldFileName.strip(os.path.sep).startswith("server"):
+			elif any([relOldFileName.strip(os.path.sep).startswith(prefix)
+			            for prefix in conf["viur.skeletons.allowedMetaFolderPrefix"]]):
 				# The old one was from server - override it
 				MetaBaseSkel._skelCache[cls.kindName] = cls
 			else:
 				raise ValueError("Duplicate definition for %s in %s and %s" %
 				                 (cls.kindName, relNewFileName, relOldFileName))
+
 		# Ensure that all skeletons are defined in /skeletons/
-		relFileName = inspect.getfile(cls).replace(os.getcwd(), "")
-		if (not relFileName.strip(os.path.sep).startswith("skeletons")
-		    and not relFileName.strip(os.path.sep).startswith("server")
-		    and not "viur_doc_build" in dir(sys)):  # Do not check while documentation build
-			raise NotImplementedError("Skeletons must be defined in /skeletons/")
+		if conf["viur.skeletons.allowedFolderPrefix"]:
+			relFileName = inspect.getfile(cls).replace(os.getcwd(), "")
+			if (not any([relFileName.strip(os.path.sep).startswith(prefix)
+			                for prefix in conf["viur.skeletons.allowedFolderPrefix"]])
+			    and not "viur_doc_build" in dir(sys)):  # Do not check while documentation build
+				raise NotImplementedError("Skeletons must be defined in %s" %
+				                            ", ".join([("/%s/" % prefix)
+				                                        for prefix in conf["viur.skeletons.allowedFolderPrefix"]]))
+
 		if cls.kindName and cls.kindName is not __undefindedC__:
 			MetaBaseSkel._skelCache[cls.kindName] = cls
 
