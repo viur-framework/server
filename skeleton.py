@@ -435,7 +435,7 @@ class MetaSkel(MetaBaseSkel):
 
 		# Automatic determination of the kindName, if the class is not part of the server.
 		if (cls.kindName is __undefindedC__
-		    and not relNewFileName.strip(os.path.sep).startswith("server")
+		    and not any([relNewFileName.strip(os.path.sep).startswith(prefix) for prefix in conf["viur.skeletons.allowedMetaFolderPrefix"]])
 		    and not "viur_doc_build" in dir(sys)):
 			if cls.__name__.endswith("Skel"):
 				cls.kindName = cls.__name__.lower()[:-4]
