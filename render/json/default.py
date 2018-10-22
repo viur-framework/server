@@ -55,9 +55,10 @@ class DefaultRender(object):
 			})
 
 
-		elif bone.type == "selectone" or bone.type.startswith("selectone.") or bone.type == "selectmulti" or bone.type.startswith("selectmulti."):
+		elif bone.type == "select" or bone.type.startswith("select."):
 			ret.update({
-				"values": [(k, v) for k, v in bone.values.items()]
+				"values": [(k, _(v)) for k, v in bone.values.items()],
+				"multiple": bone.multiple,
 			})
 
 		elif bone.type == "date" or bone.type.startswith("date."):
@@ -198,7 +199,7 @@ class DefaultRender(object):
 
 		return res
 
-	def renderEntry( self, skel, actionName ):
+	def renderEntry(self, skel, actionName, params = None):
 		if isinstance(skel, list):
 			vals = [self.renderSkelValues(x) for x in skel]
 			struct = self.renderSkelStructure(skel[0])
@@ -209,22 +210,23 @@ class DefaultRender(object):
 		res = {
 			"values": vals,
 			"structure": struct,
-			"action": actionName
+			"action": actionName,
+			"params": params
 		}
 
 		request.current.get().response.headers["Content-Type"] = "application/json"
 		return json.dumps(res)
 
-	def view(self, skel, listname="view", *args, **kwargs):
-		return self.renderEntry(skel, "view")
+	def view(self, skel, action="view", params = None, *args, **kwargs):
+		return self.renderEntry(skel, action, params)
 
-	def add(self, skel, **kwargs):
-		return self.renderEntry(skel, "add")
+	def add(self, skel, action = "add", params = None, **kwargs):
+		return self.renderEntry(skel, action, params)
 
-	def edit(self, skel, **kwargs):
-		return self.renderEntry(skel, "edit")
+	def edit(self, skel, action = "edit", params=None, **kwargs):
+		return self.renderEntry(skel, action, params)
 
-	def list(self, skellist, **kwargs):
+	def list(self, skellist, action = "list", params=None, **kwargs):
 		res = {}
 		skels = []
 
@@ -237,27 +239,27 @@ class DefaultRender(object):
 			res["structure"] = self.renderSkelStructure(skellist.baseSkel)
 		else:
 			res["structure"] = None
+
 		res["cursor"] = skellist.cursor
-		res["action"] = "list"
+		res["action"] = action
+		res["params"] = params
+
 		request.current.get().response.headers["Content-Type"] = "application/json"
 		return json.dumps(res)
 
-	def editItemSuccess(self, skel, **kwargs):
-		return self.renderEntry(skel, "editSuccess")
-
-	def addItemSuccess(self, skel, **kwargs):
-		return self.renderEntry(skel, "addSuccess")
-
-	def deleteItemSuccess(self, skel, **kwargs):
-		return self.renderEntry(skel, "deleteSuccess")
-
-	def addDirSuccess(self, *args, **kwargs):
+	def editItemSuccess(self, skel, params=None, **kwargs):
+		return self.renderEntry(skel, "editSuccess", params)
+		
+	def addItemSuccess(self, skel, params=None, **kwargs):
+		return self.renderEntry(skel, "addSuccess", params)
+		
+	def addDirSuccess(self, rootNode,  path, dirname, params=None, *args, **kwargs):
 		return json.dumps("OKAY")
 
-	def listRootNodes(self, rootNodes ):
+	def listRootNodes(self, rootNodes, tpl=None, params=None):
 		return json.dumps(rootNodes)
 
-	def listRootNodeContents(self, subdirs, entrys, **kwargs):
+	def listRootNodeContents(self, subdirs, entrys, tpl=None, params=None, **kwargs):
 		res = {
 			"subdirs": subdirs
 		}
@@ -270,20 +272,20 @@ class DefaultRender(object):
 		res["entrys"] = skels
 		return json.dumps(res)
 
-	def renameSuccess(self, *args, **kwargs):
+	def renameSuccess(self, rootNode, path, src, dest, params=None, *args, **kwargs):
 		return json.dumps("OKAY")
 
-	def copySuccess(self, *args, **kwargs):
+	def copySuccess(self, srcrepo, srcpath, name, destrepo, destpath, type, deleteold, params=None, *args, **kwargs):
 		return json.dumps("OKAY")
 
-	def deleteSuccess(self, *args, **kwargs):
+	def deleteSuccess(self, skel, params=None, *args, **kwargs):
 		return json.dumps("OKAY")
 
-	def reparentSuccess(self, *args, **kwargs):
+	def reparentSuccess(self, obj, tpl=None, params=None, *args, **kwargs):
 		return json.dumps("OKAY")
 
-	def setIndexSuccess(self, *args, **kwargs):
+	def setIndexSuccess(self, obj, tpl=None, params=None, *args, **kwargs):
 		return json.dumps("OKAY")
 
-	def cloneSuccess(self, *args, **kwargs):
+	def cloneSuccess(self, tpl=None, params=None, *args, **kwargs):
 		return json.dumps("OKAY")

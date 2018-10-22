@@ -241,10 +241,10 @@ class relationalBone( baseBone ):
 				if self.indexed:
 					if refData:
 						for k, v in refData.items():
-							entity[ "%s.dest.%s" % (name,k) ] = v
+							entity.set("%s.dest.%s" % (name,k), v, True)
 					if usingData:
 						for k, v in usingData.items():
-							entity[ "%s.rel.%s" % (name,k) ] = v
+							entity.set("%s.rel.%s" % (name,k), v, True)
 					#for k, v in valuesCache[name].items():
 					#	if (k in self.refKeys or any( [ k.startswith("%s." %x) for x in self.refKeys ] ) ):
 					#		entity[ "%s.%s" % (name,k) ] = v
@@ -260,9 +260,9 @@ class relationalBone( baseBone ):
 
 		parentValues = {}
 
-		for parentKey in self.parentKeys:
-			if parentKey in dbfields:
-				parentValues[ parentKey ] = dbfields[ parentKey ]
+		for parentKey in dbfields.keys():
+			if parentKey in self.parentKeys or any([parentKey.startswith(x+".") for x in self.parentKeys]):
+				parentValues[parentKey] = dbfields[parentKey]
 
 		dbVals = db.Query( "viur-relations" ).ancestor( db.Key( key ) ) #skel.kindName+"_"+self.kind+"_"+key
 		dbVals.filter("viur_src_kind =", skel.kindName )
@@ -502,18 +502,18 @@ class relationalBone( baseBone ):
 						v = db.Key( v )
 					dbFilter.ancestor( v )
 					continue
-				if not (k if " " not in k else k.split(" ")[0]) in self.parentKeys:
+				if not (k if "." not in k else k.split(".")[0]) in self.parentKeys:
 					logging.warning( "Invalid filtering! %s is not in parentKeys of RelationalBone %s!" % (k,name) )
 					raise RuntimeError()
 				dbFilter.filter( "src.%s" % k, v )
-			orderList = []
-			for k,d in origSortOrders: #Merge old sort orders in
-				if not k in self.parentKeys:
-					logging.warning( "Invalid filtering! %s is not in parentKeys of RelationalBone %s!" % (k,name) )
-					raise RuntimeError()
-				orderList.append( ("src.%s" % k, d) )
-			if orderList:
-				dbFilter.order( *orderList )
+		orderList = []
+		for k,d in origSortOrders: #Merge old sort orders in
+			if not k in self.parentKeys:
+				logging.warning( "Invalid filtering! %s is not in parentKeys of RelationalBone %s!" % (k,name) )
+				raise RuntimeError()
+			orderList.append( ("src.%s" % k, d) )
+		if orderList:
+			dbFilter.order( *orderList )
 		return( name, skel, dbFilter, rawFilter )
 
 	def buildDBFilter( self, name, skel, dbFilter, rawFilter, prefix=None ):
@@ -783,63 +783,61 @@ class relationalBone( baseBone ):
 				updateInplace(k)
 
 	def getSearchTags(self, values, key):
-		from server.skeleton import BaseSkeleton
-
-		def getValues(res, entry):
-			for part in ["dest", "rel"]:
-				if not isinstance(entry.get(part), BaseSkeleton):
-					continue
-
-				for k, bone in entry[part].items():
-					if bone.indexed:
-						for tag in bone.getSearchTags(entry[part], k):
-							if tag not in res:
-								res.append(tag)
-
-		res = []
-		if key not in values or not values[key]:
+		def getValues(res, skel, valuesCache):
+			for k, bone in skel.items():
+				if bone.searchable:
+					for tag in bone.getSearchTags(valuesCache, k):
+						if tag not in res:
+							res.append(tag)
 			return res
-
-		value = values[key]
-
+		value = values.get(key)
+		res = []
+		if not value:
+			return res
 		if self.multiple:
 			for val in value:
-				getValues(res, val)
+				if val["dest"]:
+					res = getValues(res, self._refSkelCache, val["dest"])
+				if val["rel"]:
+					res = getValues(res, self._usingSkelCache, val["rel"])
 		else:
-			getValues(res, value)
-
+			if value["dest"]:
+				res = getValues(res, self._refSkelCache, value["dest"])
+			if value["rel"]:
+				res = getValues(res, self._usingSkelCache, value["rel"])
 		return res
 
 	def getSearchDocumentFields(self, valuesCache, name, prefix=""):
 		"""
 		Generate fields for Google Search API
 		"""
+		def getValues(res, skel, valuesCache, searchPrefix):
+			for key, bone in skel.items():
+				if bone.searchable:
+					res.extend(bone.getSearchDocumentFields(valuesCache, key, prefix=searchPrefix))
+
+		value = valuesCache.get(name)
 		res = []
 
-		if not valuesCache[name]:
+		if not value:
 			return res
 
 		if self.multiple:
-			for idx, rel in enumerate(valuesCache[name]):
-				for sub in ["dest", "rel"]:
-					if not rel[sub]:
-						continue
-
-					for key, bone in rel[sub].items():
-						res.extend(bone.getSearchDocumentFields(rel[sub].getValuesCache(), key,
-						                                        prefix=prefix + name + "_" + str(idx) + "_"))
+			for idx, val in enumerate(value):
+				searchPrefix = "%s%s_%s" % (prefix, name, str(idx))
+				if val["dest"]:
+					getValues(res, self._refSkelCache, val["dest"], searchPrefix)
+				if val["rel"]:
+					getValues(res, self._usingSkelCache, val["rel"], searchPrefix)
 		else:
-			rel = valuesCache[name]
-
-			for sub in ["dest", "rel"]:
-				if not rel[sub]:
-					continue
-
-				for key, bone in rel[sub].items():
-					res.extend(bone.getSearchDocumentFields(rel[sub].getValuesCache(), key,
-					                                        prefix=prefix + name))
+			searchPrefix = "%s%s" % (prefix, name)
+			if value["dest"]:
+				getValues(res, self._refSkelCache, value["dest"], searchPrefix)
+			if value["rel"]:
+				getValues(res, self._usingSkelCache, value["rel"], searchPrefix)
 
 		return res
+
 
 	def setBoneValue(self, valuesCache, boneName, value, append, *args, **kwargs):
 		"""

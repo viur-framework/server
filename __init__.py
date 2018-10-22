@@ -16,7 +16,7 @@
    I N F O R M A T I O N    S Y S T E M
 
  ViUR® SERVER
- Copyright 2012-2017 by mausbrand Informationssysteme GmbH
+ Copyright 2012-2018 by mausbrand Informationssysteme GmbH
 
  ViUR® is a free software development framework for the Google App Engine™.
  More about ViUR can be found at http://www.viur.is/.
@@ -25,7 +25,7 @@
  See file LICENSE for more information.
 """
 
-__version__ = (-99,-99,-99)  # Which API do we expose to our application
+__version__ = (2, 3, 0)  # Which API do we expose to our application
 
 import sys, traceback, os, inspect
 
@@ -389,6 +389,10 @@ class BrowseHandler(webapp.RequestHandler):
 			else: # This URL doesnt contain an language prefix, try to read it from session
 				if session.current.getLanguage():
 					self.language = session.current.getLanguage()
+				elif "X-Appengine-Country" in self.request.headers.keys():
+					lng = self.request.headers["X-Appengine-Country"].lower()
+					if lng in conf["viur.availableLanguages"] or lng in conf["viur.languageAliasMap"]:
+						self.language = lng
 		return( path )
 
 
@@ -467,7 +471,7 @@ class BrowseHandler(webapp.RequestHandler):
 			if conf["viur.debug.traceExceptions"]:
 				raise
 			self.response.clear()
-			self.response.set_status( e.status )
+			self.response.set_status(e.status, e.descr)
 			res = None
 			if conf["viur.errorHandler"]:
 				try:
@@ -481,7 +485,8 @@ class BrowseHandler(webapp.RequestHandler):
 				res = tpl.safe_substitute( {"error_code": e.status, "error_name":e.name, "error_descr": e.descr} )
 			self.response.out.write( res )
 		except Exception as e: #Something got really wrong
-			logging.exception( "Viur caught an unhandled exception!" )
+			logging.error("Viur caught an unhandled exception!")
+			logging.exception(e)
 			self.response.clear()
 			self.response.set_status( 500 )
 			res = None

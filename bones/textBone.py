@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
-from server.bones import baseBone
-from time import time
-import HTMLParser, htmlentitydefs
-from server import db
-from server.utils import markFileForDeletion
-from server.config import conf
+import HTMLParser
+import htmlentitydefs
+
 from google.appengine.api import search
+
+from server import db
+from server.bones import baseBone
 from server.bones.stringBone import LanguageWrapper
 import logging, string
+from server.config import conf
 
 _defaultTags = {
 	"validTags": [  # List of HTML-Tags which are valid
@@ -232,11 +233,11 @@ class textBone( baseBone ):
 			:type entity: :class:`server.db.Entity`
 			:return: the modified :class:`server.db.Entity`
 		"""
-		if name == "key":
+		if name == "key" or not name in valuesCache:
 			return( entity )
 		if self.languages:
 			for k in entity.keys(): #Remove any old data
-				if k.startswith("%s." % name ):
+				if k.startswith("%s." % name) or k.startswith("%s_" % name ) or k==name:
 					del entity[ k ]
 			for lang in self.languages:
 				if isinstance(valuesCache[name], dict) and lang in valuesCache[name]:
@@ -244,7 +245,7 @@ class textBone( baseBone ):
 					if not val or (not HtmlSerializer().santinize(val).strip() and not "<img " in val):
 						#This text is empty (ie. it might contain only an empty <p> tag
 						continue
-					entity[ "%s.%s" % (name, lang) ] = val
+					entity.set("%s.%s" % (name, lang), val, self.indexed)
 		else:
 			entity.set( name, valuesCache[name], self.indexed )
 		return( entity )
@@ -353,17 +354,17 @@ class textBone( baseBone ):
 								newFileKeys.append( fk )
 							idx = val.find("/file/download/", seperatorIdx)
 		else:
-			if valuesCache[name]:
-				idx = valuesCache[name].find("/file/download/")
-				while idx!=-1:
+			values = valuesCache.get(name)
+			if values:
+				idx = values.find("/file/download/")
+				while idx != -1:
 					idx += 15
-					seperatorIdx = min( [ x for x in [valuesCache[name].find("/",idx), valuesCache[name].find("\"",idx)] if x!=-1] )
-					fk = valuesCache[name][ idx:seperatorIdx]
-					if not fk in newFileKeys:
-						newFileKeys.append( fk )
-					idx = valuesCache[name].find("/file/download/", seperatorIdx)
-		return( newFileKeys )
-
+					seperatorIdx = min([x for x in [values.find("/", idx), values.find("\"", idx)] if x != -1])
+					fk = values[idx:seperatorIdx]
+					if fk not in newFileKeys:
+						newFileKeys.append(fk)
+					idx = values.find("/file/download/", seperatorIdx)
+		return newFileKeys
 
 	def getSearchTags(self, valuesCache, name):
 		res = []
@@ -390,6 +391,9 @@ class textBone( baseBone ):
 		"""
 			Returns a list of search-fields (GAE search API) for this bone.
 		"""
+		if valuesCache.get(name) is None:
+			# If adding an entry using an subskel, our value might not have been set
+			return []
 		if self.languages:
 			assert isinstance(valuesCache[name], dict), "The value shall already contain a dict, something is wrong here."
 

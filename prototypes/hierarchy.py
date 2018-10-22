@@ -1,33 +1,25 @@
 # -*- coding: utf-8 -*-
-import logging
+import logging, sys
 from datetime import datetime
 from time import time
 
 from server import db, utils, errors, conf, request, securitykey
 from server import forcePost, forceSSL, exposed, internalExposed
-from server.bones import baseBone, numericBone
+from server.bones import baseBone, keyBone, numericBone
 from server.prototypes import BasicApplication
 from server.skeleton import Skeleton
 from server.tasks import callDeferred
 
 class HierarchySkel(Skeleton):
-	parententry = baseBone(descr="Parent", visible=False, indexed=True, readOnly=True)
-	parentrepo = baseBone(descr="BaseRepo", visible=False, indexed=True, readOnly=True)
-	sortindex = numericBone(descr="SortIndex", mode="float", visible=False, indexed=True, readOnly=True)
+	parententry = keyBone(descr="Parent", visible=False, indexed=True, readOnly=True)
+	parentrepo = keyBone(descr="BaseRepo", visible=False, indexed=True, readOnly=True)
+	sortindex = numericBone(descr="SortIndex", mode="float", visible=False, indexed=True, readOnly=True, max=sys.maxint)
+
 
 	def preProcessSerializedData(self, dbfields):
 		if not ("sortindex" in dbfields and dbfields["sortindex"]):
 			dbfields["sortindex"] = time()
 		return dbfields
-
-	def refresh(self):
-		if self["parententry"]:
-			self["parententry"] = utils.normalizeKey(self["parententry"])
-		if self["parentrepo"]:
-			self["parentrepo"] = utils.normalizeKey(self["parentrepo"])
-
-		super(HierarchySkel, self).refresh()
-
 
 class Hierarchy(BasicApplication):
 	"""
@@ -236,7 +228,7 @@ class Hierarchy(BasicApplication):
 
 			skel = self.viewSkel()
 			if "name" in skel:
-				nameBone = skel["name"]
+				nameBone = getattr(skel, "name")
 
 				if (isinstance(nameBone, baseBone)
 				    and "languages" in dir(nameBone)
@@ -701,7 +693,7 @@ class Hierarchy(BasicApplication):
 			raise errors.PreconditionFailed()
 
 		self._clone(fromRepo, toRepo, fromParent, toParent)
-		return self.render.cloneSuccess(*args, **kwargs)
+		return self.render.cloneSuccess()
 
 	@callDeferred
 	def _clone(self, fromRepo, toRepo, fromParent, toParent):
@@ -723,6 +715,7 @@ class Hierarchy(BasicApplication):
 			for k, v in skel.items():
 				logging.debug("BEHIND %s = >%s<", (k, skel[k]))
 
+			skel["key"] = None
 			skel["parententry"] = toParent
 			skel["parentrepo"] = toRepo
 
