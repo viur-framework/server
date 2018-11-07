@@ -70,7 +70,7 @@ class spatialBone( baseBone ):
 		"""
 		latDelta = self.boundsLat[1]-self.boundsLat[0]
 		lngDelta = self.boundsLng[1]-self.boundsLng[0]
-		return latDelta/self.gridDimensions[0], lngDelta/self.gridDimensions[1]
+		return float(latDelta)/float(self.gridDimensions[0]), float(lngDelta)/float(self.gridDimensions[1])
 
 	def isInvalid( self, value ):
 		"""
@@ -117,9 +117,29 @@ class spatialBone( baseBone ):
 				tileLng = int(floor((lng-self.boundsLng[0])/gridSizeLng))
 				entity.set( name+".lat.tiles", [tileLat-1,tileLat,tileLat+1], self.indexed )
 				entity.set( name+".lng.tiles", [tileLng-1,tileLng,tileLng+1], self.indexed )
-		logging.error( entity[name+".lat.tiles"] )
-		logging.error( entity[name+".lng.tiles"] )
 		return( entity )
+
+
+	def fromClient( self, valuesCache, name, data ):
+		if "%s.lat" % name in data and "%s.lng" % name in data:
+			try:
+				lat = float(data["%s.lat" % name])
+				lng = float(data["%s.lng" % name])
+				assert lat == lat  # Check for NaN
+				assert lng == lng  # Check for NaN
+			except:
+				value = None
+			else:
+				value = (lat, lng)
+		else:
+			value = None
+		err = self.isInvalid(value)
+		if not err:
+			valuesCache[name] = value
+			return True
+		else:
+			return err
+
 
 	def unserialize( self, valuesCache, name, expando ):
 		"""
