@@ -25,9 +25,10 @@ _defaultTags = {
 	"validStyles": [
 		"width", "float",  # for images
 		"text-align",  # for general text alignment
-		"margin-left"  # for indent
+		"margin-left",  # for indent
+		"color"
 	],  # List of CSS-Directives we allow
-	"validClasses": ["vitxt-*"],  # List of valid class-names that are valid
+	"validClasses": ["viur-*", "viur_*", "js-*", "js_*"],  # List of valid class-names that are valid
 	"singleTags": ["br", "img", "hr"]  # List of tags, which don't have a corresponding end tag
 }
 
