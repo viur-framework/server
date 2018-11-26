@@ -75,7 +75,6 @@ class HtmlSerializer(HTMLParser.HTMLParser):  # html.parser.HTMLParser
 
 	def handle_starttag(self, tag, attrs):
 		""" Delete all tags except for legal ones """
-		filterChars = "\"'\\\0\r\n@()"
 		if self.validHtml and tag in self.validHtml["validTags"]:
 			cacheTagStart = '<' + tag
 			isBlankTarget = False
@@ -86,10 +85,7 @@ class HtmlSerializer(HTMLParser.HTMLParser):  # html.parser.HTMLParser
 				k = k.strip()
 				v = v.strip()
 
-				if any([c in k for c in filterChars]) or any([c in v for c in filterChars]):
-					# Either the key or the value contains a character that's not supposed to be there
-					continue
-				elif k == "class":
+				if k == "class":
 					# Classes are handled below
 					classes = v.split(" ")
 					continue
