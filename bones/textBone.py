@@ -17,7 +17,7 @@ _defaultTags = {
 		"a": ["href", "target", "title"],
 		"abbr": ["title"],
 		"span": ["title"],
-		"img": ["src", "srcset", "width", "height", "alt", "title"],
+		"img": ["src", "srcset", "alt", "title"],
 		"td": ["colspan", "rowspan"],
 		"p": ["data-indent"],
 		"blockquote": ["cite"]
