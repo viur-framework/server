@@ -23,9 +23,6 @@ _defaultTags = {
 		"blockquote": ["cite"]
 	},
 	"validStyles": [
-		"width", "float",  # for images
-		"text-align",  # for general text alignment
-		"margin-left",  # for indent
 		"color"
 	],  # List of CSS-Directives we allow
 	"validClasses": ["viur-*", "viur_*", "js-*", "js_*"],  # List of valid class-names that are valid
