@@ -18,6 +18,8 @@ conf = {
 	"viur.capabilities": [], #Extended functionality of the whole System (For module-dependend functionality advertise this in the module configuration (adminInfo)
 	"viur.contentSecurityPolicy": None, #If set, viur will emit a CSP http-header with each request. Use the csp module to set this property
 
+	"viur.bone.relational.notFoundStrategy": "raise", # Strategy to run when a relationalBone doesn't find its entries. Valid are: "raise", "report", "ignore"
+
 	"viur.db.caching" : 2, #Cache strategy used by the database. 2: Aggressive, 1: Safe, 0: Off
 	"viur.debug.traceExceptions": False, #If enabled, user-generated exceptions from the server.errors module won't be caught and handled
 	"viur.debug.traceExternalCallRouting": False, #If enabled, ViUR will log which (exposed) function are called from outside with what arguments

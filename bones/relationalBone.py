@@ -1,15 +1,9 @@
 # -*- coding: utf-8 -*-
 from server.bones import baseBone
 from server.bones.bone import getSystemInitialized
-from server import db
-from server.errors import ReadFromClientError
-from server.utils import normalizeKey
-from google.appengine.api import search
-import extjson
+from server import db, conf, utils, errors
 from time import time
-from datetime import datetime
-import logging
-
+import logging, extjson
 
 class relationalBone( baseBone ):
 	"""
@@ -404,10 +398,9 @@ class relationalBone( baseBone ):
 
 			try:
 				entry = db.Get( db.Key( r["dest"]["key"] ) )
-			except: #Invalid key or something like thatmnn
+			except: #Invalid key or something like that
+				logging.info("Invalid key %r detected on bone '%s'", r["dest"]["key"], name)
 
-				logging.info( "Invalid reference key >%s< detected on bone '%s'",
-							  r["dest"]["key"], name )
 				if isinstance(oldValues, dict):
 					if oldValues["dest"]["key"]==str(r["dest"]["key"]):
 						refSkel = self._refSkelCache
@@ -476,7 +469,7 @@ class relationalBone( baseBone ):
 				if val is None:
 					errorDict[name] = "No value selected"
 		if len(errorDict.keys()):
-			return ReadFromClientError(errorDict, forceFail)
+			return errors.ReadFromClientError(errorDict, forceFail)
 
 	def _rewriteQuery(self, name, skel, dbFilter, rawFilter ):
 		"""
@@ -746,7 +739,7 @@ class relationalBone( baseBone ):
 				logging.error("Invalid dictionary in updateInplace: %s" % valDict)
 				return
 
-			entityKey = normalizeKey(originalKey)
+			entityKey = utils.normalizeKey(originalKey)
 			if originalKey != entityKey:
 				logging.info("Rewriting %s to %s" % (originalKey, entityKey))
 				valDict["key"] = entityKey
@@ -864,16 +857,34 @@ class relationalBone( baseBone ):
 		def relSkelFromKey(key):
 			if not isinstance(key, db.Key):
 				key = db.Key(encoded=key)
+
 			if not key.kind() == self.kind:
 				logging.error("I got a key, which kind doesn't match my type! (Got: %s, my type %s)" % (key.kind(), self.kind))
 				return None
-			entity = db.Get(key)
-			if not entity:
-				logging.error("Key %s not found" % str(key))
-				return None
+
+			try:
+				entity = db.Get(key)
+
+			except:
+				notFoundStrategy = conf.get("viur.bone.relational.notFoundStrategy", "raise").lower()
+				
+				if notFoundStrategy == "raise":
+					raise
+				elif notFoundStrategy == "report":
+					logging.error("Key %r not found", key)
+					return None
+
+				entity = None
+
 			relSkel = RefSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys)
-			relSkel.unserialize(entity)
+
+			if entity:
+				relSkel.unserialize(entity)
+			else:
+				relSkel["key"] = key
+
 			return relSkel
+
 		if append and not self.multiple:
 			raise ValueError("Bone %s is not multiple, cannot append!" % boneName)
 		if not self.multiple and not self.using:
