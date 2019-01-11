@@ -26,67 +26,9 @@ class DefaultRender(object):
 		"""
 
 		# Base bone contents.
-		ret = {
-			"descr": _(bone.descr),
-	        "type": bone.type,
-			"required": bone.required,
-			"params": bone.params,
-			"visible": bone.visible,
-			"readonly": bone.readOnly,
-			"unique": bone.unique
-		}
 
-		if bone.type == "relational" or bone.type.startswith("relational."):
-			if isinstance(bone, bones.hierarchyBone):
-				boneType = "hierarchy"
-			elif isinstance(bone, bones.treeItemBone):
-				boneType = "treeitem"
-			elif isinstance(bone, bones.treeDirBone):
-				boneType = "treedir"
-			else:
-				boneType = "relational"
-			ret.update({
-				"type": "%s.%s" % (boneType, bone.kind),
-				"module": bone.module,
-				"multiple": bone.multiple,
-				"format": bone.format,
-				"using": self.renderSkelStructure(bone.using()) if bone.using else None,
-				"relskel": self.renderSkelStructure(RefSkel.fromSkel(skeletonByKind(bone.kind), *bone.refKeys))
-			})
+		return bone.renderBoneStructure( self )
 
-
-		elif bone.type == "select" or bone.type.startswith("select."):
-			ret.update({
-				"values": [(k, _(v)) for k, v in bone.values.items()],
-				"multiple": bone.multiple,
-			})
-
-		elif bone.type == "date" or bone.type.startswith("date."):
-			ret.update({
-				"date": bone.date,
-	            "time": bone.time
-			})
-
-		elif bone.type == "numeric" or bone.type.startswith("numeric."):
-			ret.update({
-				"precision": bone.precision,
-		        "min": bone.min,
-				"max": bone.max
-			})
-
-		elif bone.type == "text" or bone.type.startswith("text."):
-			ret.update({
-				"validHtml": bone.validHtml,
-				"languages": bone.languages
-			})
-
-		elif bone.type == "str" or bone.type.startswith("str."):
-			ret.update({
-				"multiple": bone.multiple,
-				"languages": bone.languages
-			})
-
-		return ret
 
 	def renderSkelStructure(self, skel):
 		"""
@@ -134,49 +76,9 @@ class DefaultRender(object):
 		:return: A dict containing the rendered attributes.
 		:rtype: dict
 		"""
-		if bone.type == "date" or bone.type.startswith("date."):
-			if skel[key]:
-				if bone.date and bone.time:
-					return skel[key].strftime("%d.%m.%Y %H:%M:%S")
-				elif bone.date:
-					return skel[key].strftime("%d.%m.%Y")
 
-				return skel[key].strftime("%H:%M:%S")
-		elif isinstance(bone, bones.relationalBone):
-			if isinstance(skel[key], list):
-				refSkel = bone._refSkelCache
-				usingSkel = bone._usingSkelCache
-				tmpList = []
-				for k in skel[key]:
-					refSkel.setValuesCache(k["dest"])
-					if usingSkel:
-						usingSkel.setValuesCache(k.get("rel", {}))
-						usingData = self.renderSkelValues(usingSkel)
-					else:
-						usingData = None
-					tmpList.append({
-						"dest": self.renderSkelValues(refSkel),
-						"rel": usingData
-					})
+		return bone.renderBoneValue(skel,key,self)
 
-				return tmpList
-			elif isinstance(skel[key], dict):
-				refSkel = bone._refSkelCache
-				usingSkel = bone._usingSkelCache
-				refSkel.setValuesCache(skel[key]["dest"])
-				if usingSkel:
-					usingSkel.setValuesCache(skel[key].get("rel", {}))
-					usingData = self.renderSkelValues(usingSkel)
-				else:
-					usingData = None
-				return {
-					"dest": self.renderSkelValues(refSkel),
-					"rel": usingData
-				}
-		else:
-			return skel[key]
-
-		return None
 
 	def renderSkelValues(self, skel):
 		"""

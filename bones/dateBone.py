@@ -280,3 +280,32 @@ class dateBone( baseBone ):
 	def performMagic( self, valuesCache, name, isAdd ):
 		if (self.creationMagic and isAdd) or self.updateMagic:
 			self.setLocalized( valuesCache, name, ExtendedDateTime.now() )
+
+	def renderBoneStructure( self, rendererObj = None, *args, **kwargs ):
+		ret = super(dateBone, self).renderBoneStructure(rendererObj, *args, **kwargs)
+		ret.update( {
+			"date":self.date,
+			"time":self.time
+			} )
+		return ret
+
+	def renderBoneValue( self, skel, boneName, rendererObj = None, *args, **kwargs ):
+		from server.render.json import default as jsonrenderer
+		from server.render.xml import default as xmlrenderer
+		from server.render.vi import default as virenderer
+		from server.render.admin import default as adminrenderer
+
+		if isinstance(rendererObj,jsonrenderer) or\
+			isinstance( rendererObj, virenderer ) or\
+			isinstance( rendererObj, adminrenderer ) or\
+			isinstance( rendererObj, xmlrenderer ): #datetime object is not json serializable
+			if skel[ boneName ]:
+				if self.date and self.time:
+					return skel[ boneName ].strftime( "%d.%m.%Y %H:%M:%S" )
+				elif self.date:
+					return skel[ boneName ].strftime( "%d.%m.%Y" )
+
+				return skel[ boneName ].strftime( "%H:%M:%S" )
+			return None
+		else:
+			return super(dateBone, self).renderBoneValue(skel,boneName,rendererObj,*args,**kwargs)

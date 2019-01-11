@@ -465,3 +465,18 @@ class baseBone(object): # One Bone:
 			return True
 		else:
 			return False
+
+	def renderBoneStructure( self, rendererObj = None, *args, **kwargs ):
+		ret = {
+			"descr":_( self.descr ),
+			"type":self.type,
+			"required":self.required,
+			"params":self.params,
+			"visible":self.visible,
+			"readOnly":self.readOnly
+			}
+
+		return ret
+
+	def renderBoneValue( self,skel,boneName, rendererObj = None, *args, **kwargs ):
+		return skel[boneName]

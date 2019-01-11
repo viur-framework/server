@@ -115,3 +115,12 @@ class numericBone( baseBone ):
 		if isinstance(valuesCache.get(name), int) or isinstance(valuesCache.get(name), float):
 			return [search.NumberField(name=prefix + name, value=valuesCache[name])]
 		return []
+
+	def renderBoneStructure( self, rendererObj = None, *args, **kwargs ):
+		ret = super(numericBone, self).renderBoneStructure(rendererObj, *args, **kwargs)
+		ret.update( {
+			"precision":self.precision,
+			"min":self.min,
+			"max":self.max
+			} )
+		return ret

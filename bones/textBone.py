@@ -326,3 +326,11 @@ class textBone( baseBone ):
 				return [search.HtmlField(name=prefix + name, value=unicode(valuesCache[name]))]
 			else:
 				return [search.TextField(name=prefix + name, value=unicode(valuesCache[name]))]
+
+	def renderBoneStructure( self, rendererObj = None, *args, **kwargs ):
+		ret = super(textBone, self).renderBoneStructure(rendererObj, *args, **kwargs)
+		ret.update( {
+			"validHtml":self.validHtml,
+			"languages":self.languages
+			} )
+		return ret

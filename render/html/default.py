@@ -198,69 +198,8 @@ class Render( object ):
 		:rtype: dict
 		"""
 
-		# Base bone contents.
-		ret = {
-			"descr": _(bone.descr),
-	        "type": bone.type,
-			"required":bone.required,
-			"params":bone.params,
-			"visible": bone.visible,
-			"readOnly": bone.readOnly
-		}
+		return bone.renderBoneStructure(self)
 
-		if bone.type == "relational" or bone.type.startswith("relational."):
-			if isinstance(bone, hierarchyBone):
-				boneType = "hierarchy"
-			elif isinstance(bone, treeItemBone):
-				boneType = "treeitem"
-			else:
-				boneType = "relational"
-
-			ret.update({
-				"type": bone.type,
-				"module": bone.module,
-				"multiple": bone.multiple,
-				"format": bone.format,
-				"using": self.renderSkelStructure(bone.using()) if bone.using else None,
-				"relskel": self.renderSkelStructure(RefSkel.fromSkel(skeletonByKind(bone.kind), *bone.refKeys))
-			})
-
-		elif bone.type == "select" or bone.type.startswith("select."):
-			ret.update({
-				"values": OrderedDict([(k, _(v)) for (k, v) in bone.values.items()]),
-				"multiple": bone.multiple
-			})
-
-		elif bone.type == "date" or bone.type.startswith("date."):
-			ret.update({
-				"date": bone.date,
-	            "time": bone.time
-			})
-
-		elif bone.type == "numeric" or bone.type.startswith("numeric."):
-			ret.update({
-				"precision": bone.precision,
-		        "min": bone.min,
-				"max": bone.max
-			})
-
-		elif bone.type == "text" or bone.type.startswith("text."):
-			ret.update({
-				"validHtml": bone.validHtml,
-				"languages": bone.languages
-			})
-
-		elif bone.type == "str" or bone.type.startswith("str."):
-			ret.update({
-				"languages": bone.languages,
-				"multiple": bone.multiple
-			})
-		elif bone.type == "captcha" or bone.type.startswith("captcha."):
-			ret.update({
-				"publicKey": bone.publicKey,
-			})
-
-		return ret
 
 	def renderSkelStructure(self, skel):
 		"""
@@ -300,61 +239,9 @@ class Render( object ):
 		:return: A dict containing the rendered attributes.
 		:rtype: dict
 		"""
-		if bone.type == "select" or bone.type.startswith("select."):
-			skelValue = skel[key]
-			if isinstance(skelValue, list):
-				return [
-					Render.KeyValueWrapper(val, bone.values[val]) if val in bone.values else val
-					for val in skelValue
-				]
-			elif skelValue in bone.values:
-				return Render.KeyValueWrapper(skelValue, bone.values[skelValue])
-			return skelValue
-		elif bone.type=="relational" or bone.type.startswith("relational."):
-			if isinstance(skel[key], list):
-				tmpList = []
-				for k in skel[key]:
-					refSkel = bone._refSkelCache
-					refSkel.setValuesCache(k["dest"])
-					if bone.using is None:
-						tmpList.append(self.collectSkelData(refSkel))
-					else:
-						usingSkel = bone._usingSkelCache
-						if k["rel"]:
-							usingSkel.setValuesCache(k["rel"])
-							usingData = self.collectSkelData(usingSkel)
-						else:
-							usingData = None
-						tmpList.append({
-							"dest": self.collectSkelData(refSkel),
-			                                "rel": usingData
-						})
-				return tmpList
-			elif isinstance(skel[key], dict):
-				refSkel = bone._refSkelCache
-				refSkel.setValuesCache(skel[key]["dest"])
-				if bone.using is None:
-					return self.collectSkelData(refSkel)
-				else:
-					usingSkel = bone._usingSkelCache
-					if skel[key]["rel"]:
-						usingSkel.setValuesCache(skel[key]["rel"])
-						usingData = self.collectSkelData(usingSkel)
-					else:
-						usingData = None
 
-					return {
-						"dest": self.collectSkelData(refSkel),
-						"rel": usingData
-					}
-			else:
-				return None
-		else:
-			#logging.error("RETURNING")
-			#logging.error((skel[key]))
-			return skel[key]
+		return bone.renderBoneValue( skel, key, self )
 
-		return None
 
 
 	def collectSkelData(self, skel):

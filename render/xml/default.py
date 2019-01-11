@@ -64,61 +64,9 @@ class DefaultRender( object ):
 		"""
 
 		# Base bone contents.
-		ret = {
-			"descr": _(bone.descr),
-	        "type": bone.type,
-			"required":bone.required,
-			"params":bone.params,
-			"visible": bone.visible,
-			"readOnly": bone.readOnly
-		}
 
-		if isinstance(bone, relationalBone):
-			if isinstance(bone, hierarchyBone):
-				boneType = "hierarchy"
-			elif isinstance(bone, treeItemBone):
-				boneType = "treeitem"
-			else:
-				boneType = "relational"
+		return bone.renderBoneStructure( self )
 
-			ret.update({
-				"type": "%s.%s" % (boneType, bone.type),
-				"module": bone.module,
-				"multiple": bone.multiple,
-				"format": bone.format
-			})
-
-		elif isinstance(bone, selectBone):
-			ret.update({
-				"values": bone.values,
-				"multiple": bone.multiple
-			})
-
-		elif isinstance(bone, dateBone):
-			ret.update({
-				"date": bone.date,
-	            "time": bone.time
-			})
-
-		elif isinstance(bone, numericBone):
-			ret.update({
-				"precision": bone.precision,
-		        "min": bone.min,
-				"max": bone.max
-			})
-
-		elif isinstance(bone, textBone):
-			ret.update({
-				"validHtml": bone.validHtml,
-				"languages": bone.languages
-			})
-
-		elif isinstance(bone, stringBone):
-			ret.update({
-				"languages": bone.languages
-			})
-
-		return ret
 
 	def renderSkelStructure(self, skel):
 		"""
@@ -156,7 +104,7 @@ class DefaultRender( object ):
 				"descr": _( e.descr ),
 				"skel": self.renderSkelStructure( e.dataSkel() ) } )
 
-	def renderBoneValue(self, bone):
+	def renderBoneValue(self, bone, skel, key):
 		"""
 		Renders the value of a bone.
 
@@ -169,37 +117,8 @@ class DefaultRender( object ):
 		:return: A dict containing the rendered attributes.
 		:rtype: dict
 		"""
-		if isinstance(bone, dateBone):
-			if bone.value:
-				if bone.date and bone.time:
-					return bone.value.strftime("%d.%m.%Y %H:%M:%S")
-				elif bone.date:
-					return bone.value.strftime("%d.%m.%Y")
+		return bone.renderBoneValue( skel.getValuesCache(), key, self )
 
-				return bone.value.strftime("%H:%M:%S")
-
-		elif isinstance(bone, relationalBone):
-
-			if isinstance(bone.value, list):
-				tmpList = []
-
-				for k in bone.value:
-					tmpList.append({
-						"dest": self.renderSkelValues(k["dest"]),
-			            "rel": self.renderSkelValues(k.get("rel"))
-					})
-
-				return tmpList
-
-			elif isinstance(bone.value, dict):
-				return {
-					"dest": self.renderSkelValues(bone.value["dest"]),
-				    "rel": self.renderSkelValues(bone.value.get("rel"))
-				}
-		else:
-			return bone.value
-
-		return None
 
 	def renderSkelValues(self, skel):
 		"""
@@ -218,7 +137,7 @@ class DefaultRender( object ):
 
 		res = {}
 		for key, bone in skel.items():
-			res[key] = self.renderBoneValue(bone)
+			res[key] = self.renderBoneValue(bone, skel, key)
 
 		return res
 

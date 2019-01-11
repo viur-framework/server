@@ -382,3 +382,10 @@ class stringBone( baseBone ):
 			return( None )
 		return( super( stringBone, self).getUniquePropertyIndexValue(valuesCache, name))
 
+	def renderBoneStructure( self, rendererObj=None, *args, **kwargs ):
+		ret = super(stringBone, self).renderBoneStructure(rendererObj, *args, **kwargs)
+		ret.update( {
+			"languages":self.languages,
+			"multiple":self.multiple
+			} )
+		return ret
