@@ -113,31 +113,35 @@ class selectBone(baseBone):
 
 		return True
 
-	def renderBoneStructure( self, rendererObj = None, *args, **kwargs ):
-		ret = super(selectBone, self).renderBoneStructure(rendererObj, *args, **kwargs)
-		ret.update( {
-			"values":OrderedDict( [ (k, _( v )) for (k, v) in self.values.items() ] ),
-			"multiple":self.multiple
-			} )
+	def renderBoneStructure( self, render = None, *args, **kwargs ):
+		ret = super(selectBone, self).renderBoneStructure(render, *args, **kwargs)
+
+		ret.update({
+			"values": OrderedDict([(k, _( v )) for (k, v) in self.values.items()]),
+			"multiple": self.multiple
+		})
+
 		return ret
 
-	def renderBoneValue( self, skel, boneName, rendererObj = None, *args, **kwargs ):
-		from server.render.html import default as htmlrenderer
+	def renderBoneValue(self, skel, boneName, render=None, *args, **kwargs):
+		if render.render == "html" or render.render.startswith("html."):
+			skelValue = skel[boneName]
 
-		if isinstance(rendererObj,htmlrenderer):  # datetime object is not json serializable
-			skelValue = skel[ boneName ]
-			if self.multiple and not isinstance( skelValue, list ):
-				return [ rendererObj.KeyValueWrapper( skelValue, self.values[ skelValue ] ) ]
+			if self.multiple and not isinstance(skelValue, list):
+				return [ render.KeyValueWrapper(skelValue, self.values[skelValue])]
+
 			elif self.multiple:
 				return [
-					rendererObj.KeyValueWrapper( val, self.values[ val ] ) if val in self.values else val
-					for val in skelValue
-					]
+					render.KeyValueWrapper(val, self.values[val]) if val in self.values else val
+						for val in skelValue
+				]
+
 			elif skelValue in self.values:
-				return rendererObj.KeyValueWrapper( skelValue, self.values[ skelValue ] )
+				return render.KeyValueWrapper(skelValue, self.values[ skelValue])
+
 			return skelValue
-		else:
-			return super(selectBone, self).renderBoneValue(skel,boneName,rendererObj,*args,**kwargs)
+
+		return super(selectBone, self).renderBoneValue(skel, boneName, render, *args, **kwargs)
 
 
 class selectOneBone(selectBone):

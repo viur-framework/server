@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from server.render.json.default import DefaultRender as default
+from server.render.json.default import DefaultRender
 from server.render.json.user import UserRender as user
 from server.render.json.file import FileRender as file
 from server.skeleton import Skeleton
@@ -10,6 +10,9 @@ from server import utils
 from server import request
 from server import session
 import datetime, json
+
+class default(DefaultRender):
+	name = "json.admin"
 
 __all__=[ default ]
 

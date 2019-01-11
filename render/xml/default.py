@@ -45,6 +45,7 @@ def serializeXML( data ):
 	return( recursiveSerializer( data, elem ).toprettyxml(encoding="UTF-8") )
 
 class DefaultRender( object ):
+	render = "xml"
 
 	def __init__(self, parent=None, *args, **kwargs ):
 		super( DefaultRender,  self ).__init__( *args, **kwargs )

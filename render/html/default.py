@@ -11,7 +11,7 @@ from jinja2 import Environment, FileSystemLoader, ChoiceLoader
 
 import os, logging, codecs
 
-class Render( object ):
+class Render(object):
 	"""
 		The core jinja2 render.
 
@@ -33,6 +33,8 @@ class Render( object ):
 		can extend/override the functionality exposed to templates.
 
 	"""
+	render = "html"
+
 	listTemplate = "list"
 	viewTemplate = "view"
 	addTemplate = "add"

@@ -57,9 +57,10 @@ class captchaBone( bone.baseBone ):
 			return None
 		return( u"Invalid Captcha" )
 
-	def renderBoneStructure( self, rendererObj = None, *args, **kwargs ):
-		ret = super(captchaBone, self).renderBoneStructure(rendererObj, *args, **kwargs)
-		ret.update( {
-			"publicKey":self.publicKey,
-			} )
+	def renderBoneStructure(self, render = None, *args, **kwargs):
+		ret = super(captchaBone, self).renderBoneStructure(render, *args, **kwargs)
+		ret.update({
+			"publicKey": self.publicKey,
+			})
+
 		return ret

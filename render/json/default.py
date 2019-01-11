@@ -6,6 +6,7 @@ from server.skeleton import RefSkel, skeletonByKind
 import logging
 
 class DefaultRender(object):
+	render = "json"
 
 	def __init__(self, parent = None, *args, **kwargs):
 		super(DefaultRender,  self).__init__(*args, **kwargs)

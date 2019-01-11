@@ -116,11 +116,12 @@ class numericBone( baseBone ):
 			return [search.NumberField(name=prefix + name, value=valuesCache[name])]
 		return []
 
-	def renderBoneStructure( self, rendererObj = None, *args, **kwargs ):
-		ret = super(numericBone, self).renderBoneStructure(rendererObj, *args, **kwargs)
-		ret.update( {
-			"precision":self.precision,
-			"min":self.min,
-			"max":self.max
-			} )
+	def renderBoneStructure(self, render = None, *args, **kwargs):
+		ret = super(numericBone, self).renderBoneStructure(render, *args, **kwargs)
+		ret.update({
+			"precision": self.precision,
+			"min": self.min,
+			"max": self.max
+			})
+
 		return ret

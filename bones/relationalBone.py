@@ -950,111 +950,117 @@ class relationalBone( baseBone ):
 					res.update(blobsFromSkel(self._usingSkelCache, valuesCache[name]["rel"]))
 		return res
 
-	def renderBoneStructure( self, rendererObj = None, *args, **kwargs ):
+	def renderBoneStructure( self, render = None, *args, **kwargs ):
 		from server.skeleton import RefSkel, skeletonByKind #prevent circular imports
 		from server import bones
-		ret = super(relationalBone, self).renderBoneStructure(rendererObj, *args, **kwargs)
 
-		if isinstance( self, bones.hierarchyBone ):
+		ret = super(relationalBone, self).renderBoneStructure(render, *args, **kwargs)
+
+		if isinstance(self, bones.hierarchyBone):
 			boneType = "hierarchy"
-		elif isinstance( self, bones.treeItemBone ):
+		elif isinstance(self, bones.treeItemBone):
 			boneType = "treeitem"
-		elif isinstance( self, bones.treeDirBone ):
+		elif isinstance(self, bones.treeDirBone):
 			boneType = "treedir"
 		else:
 			boneType = "relational"
 
-		ret.update( {
-			"type":"%s.%s" % (boneType, self.kind),
-			"module":self.module,
-			"multiple":self.multiple,
-			"format":self.format,
-			"using":rendererObj.renderSkelStructure( self.using() ) if self.using else None,
-			"relskel":rendererObj.renderSkelStructure( RefSkel.fromSkel( skeletonByKind( self.kind ), *self.refKeys ) )
-			} )
+		ret.update({
+			"type": "%s.%s" % (boneType, self.kind),
+			"module": self.module,
+			"multiple": self.multiple,
+			"format": self.format,
+			"using": render.renderSkelStructure(self.using()) if self.using else None,
+			"relskel": render.renderSkelStructure(RefSkel.fromSkel(skeletonByKind(self.kind), *self.refKeys))
+		})
 
 		return ret
 
-	def renderBoneValue( self,skel,boneName, rendererObj = None, *args, **kwargs ):
-		from server.render.json import default as jsonrenderer
-		from server.render.xml import default as xmlrenderer
-		from server.render.vi import default as virenderer
-		from server.render.admin import default as adminrenderer
-		from server.render.html import default as htmlrenderer
-
-		if isinstance( rendererObj, jsonrenderer ) or \
-				isinstance( rendererObj, virenderer ) or \
-				isinstance( rendererObj, adminrenderer ) or \
-				isinstance( rendererObj, xmlrenderer ):
-			if isinstance( skel[ boneName ], list ):
+	def renderBoneValue(self, skel, boneName, render=None, *args, **kwargs):
+		if render.render in ["json", "xml"] or render.render.startswith("json."):
+			if isinstance(skel[boneName], list):
 				refSkel = self._refSkelCache
 				usingSkel = self._usingSkelCache
-				tmpList = [ ]
+				ret = []
+
 				for k in skel[ boneName ]:
-					refSkel.setValuesCache( k[ "dest" ] )
+					refSkel.setValuesCache(k["dest"])
+
 					if usingSkel:
-						usingSkel.setValuesCache( k.get( "rel", { } ) )
-						usingData = rendererObj.renderSkelValues( usingSkel )
+						usingSkel.setValuesCache(k.get( "rel", {}))
+						usingData = render.renderSkelValues(usingSkel)
 					else:
 						usingData = None
-					tmpList.append( {
-						"dest":rendererObj.renderSkelValues( refSkel ),
-						"rel":usingData
-						} )
 
-				return tmpList
+					ret.append({
+						"dest": render.renderSkelValues(refSkel),
+						"rel": usingData
+						})
 
-			elif isinstance( skel[ boneName ], dict ):
+				return ret
+
+			elif isinstance(skel[boneName], dict):
 				refSkel = self._refSkelCache
 				usingSkel = self._usingSkelCache
-				refSkel.setValuesCache( skel[ boneName ][ "dest" ] )
+
+				refSkel.setValuesCache(skel[boneName]["dest"])
+
 				if usingSkel:
-					usingSkel.setValuesCache( skel[ boneName ].get( "rel", { } ) )
-					usingData = rendererObj.renderSkelValues( usingSkel )
+					usingSkel.setValuesCache(skel[boneName].get("rel", {}))
+					usingData = render.renderSkelValues(usingSkel)
 				else:
 					usingData = None
+
 				return {
-					"dest":rendererObj.renderSkelValues( refSkel ),
-					"rel":usingData
-					}
-		elif isinstance(rendererObj,htmlrenderer):
-			if isinstance(skel[ boneName ], list):
-				tmpList = []
+					"dest": render.renderSkelValues(refSkel),
+					"rel": usingData
+				}
+
+		elif render.render == "html" or render.render.startswith("html."):
+			if isinstance(skel[boneName], list):
+				ret = []
 				for k in skel[ boneName ]:
 					refSkel = self._refSkelCache
 					refSkel.setValuesCache(k["dest"])
+
 					if self.using is None:
-						tmpList.append(rendererObj.collectSkelData(refSkel))
+						ret.append(render.collectSkelData(refSkel))
 					else:
 						usingSkel = self._usingSkelCache
+
 						if k["rel"]:
 							usingSkel.setValuesCache(k["rel"])
-							usingData = rendererObj.collectSkelData(usingSkel)
+							usingData = render.collectSkelData(usingSkel)
 						else:
 							usingData = None
-						tmpList.append({
-							"dest": rendererObj.collectSkelData(refSkel),
-			                                "rel": usingData
+
+						ret.append({
+							"dest": render.collectSkelData(refSkel),
+							"rel": usingData
 						})
-				return tmpList
-			elif isinstance(skel[ boneName ], dict):
+
+				return ret
+
+			elif isinstance(skel[boneName], dict):
 				refSkel = self._refSkelCache
-				refSkel.setValuesCache(skel[ boneName ]["dest"])
+				refSkel.setValuesCache(skel[boneName]["dest"])
+
 				if self.using is None:
-					return rendererObj.collectSkelData(refSkel)
+					return render.collectSkelData(refSkel)
 				else:
 					usingSkel = self._usingSkelCache
+
 					if skel[ boneName ]["rel"]:
 						usingSkel.setValuesCache(skel[ boneName ]["rel"])
-						usingData = rendererObj.collectSkelData(usingSkel)
+						usingData = render.collectSkelData(usingSkel)
 					else:
 						usingData = None
 
 					return {
-						"dest": rendererObj.collectSkelData(refSkel),
+						"dest": render.collectSkelData(refSkel),
 						"rel": usingData
 					}
 			else:
 				return None
-		else:
-			return super(relationalBone, self).renderBoneValue(skel,boneName,rendererObj,*args,**kwargs)
+
+		return super(relationalBone, self).renderBoneValue(skel, boneName, render, *args, **kwargs)
