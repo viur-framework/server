@@ -6,6 +6,7 @@ from server.prototypes import BasicApplication
 from server.bones import baseBone, keyBone, numericBone
 from server.skeleton import Skeleton, skeletonByKind
 from server.tasks import callDeferred
+from server.utils import normalizeKey
 
 from datetime import datetime
 import logging
@@ -37,6 +38,16 @@ class TreeLeafSkel( Skeleton ):
 			self.toDB()
 
 		return res
+
+	def refresh(self):
+
+		if self["parentdir"]:
+			self[ "parentdir" ] = normalizeKey(self["parentdir"])
+
+		if self["parentrepo"]:
+			self[ "parentrepo" ] = normalizeKey(self["parentrepo"])
+			
+		super( TreeLeafSkel, self ).refresh()
 
 class TreeNodeSkel( TreeLeafSkel ):
 	pass
