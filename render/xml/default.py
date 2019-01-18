@@ -45,6 +45,7 @@ def serializeXML( data ):
 	return( recursiveSerializer( data, elem ).toprettyxml(encoding="UTF-8") )
 
 class DefaultRender( object ):
+	rendererName = "xml"
 
 	def __init__(self, parent=None, *args, **kwargs ):
 		super( DefaultRender,  self ).__init__( *args, **kwargs )
@@ -63,7 +64,9 @@ class DefaultRender( object ):
 		:rtype: dict
 		"""
 
-		# Base bone contents.
+		for renderer in reversed(self.rendererName.split(".")):
+			if renderer + "_renderBoneStructure" in dir( bone ):
+				return getattr( bone, renderer + "_renderBoneStructure")( self )
 
 		return bone.renderBoneStructure( self )
 
@@ -117,6 +120,10 @@ class DefaultRender( object ):
 		:return: A dict containing the rendered attributes.
 		:rtype: dict
 		"""
+		for renderer in reversed( self.rendererName.split( "." ) ):
+			if renderer + "_renderBoneValue" in dir( bone ):
+				return getattr( bone, renderer + "_renderBoneValue")( self )
+
 		return bone.renderBoneValue( skel.getValuesCache(), key, self )
 
 

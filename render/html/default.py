@@ -51,6 +51,7 @@ class Render( object ):
 	cloneSuccessTemplate = "clone_success"
 
 	__haveEnvImported_ = False
+	rendererName = "html"
 
 	class KeyValueWrapper:
 		"""
@@ -198,7 +199,11 @@ class Render( object ):
 		:rtype: dict
 		"""
 
-		return bone.renderBoneStructure(self)
+		for renderer in reversed( self.rendererName.split( "." ) ):
+			if renderer + "_renderBoneStructure" in dir( bone ):
+				return getattr( bone, renderer + "_renderBoneStructure" )( self )
+
+		return bone.renderBoneStructure( self )
 
 
 	def renderSkelStructure(self, skel):
@@ -239,6 +244,9 @@ class Render( object ):
 		:return: A dict containing the rendered attributes.
 		:rtype: dict
 		"""
+		for renderer in reversed( self.rendererName.split( "." ) ):
+			if renderer + "_renderBoneValue" in dir( bone ):
+				return getattr( bone, renderer + "_renderBoneValue")( skel, key, self )
 
 		return bone.renderBoneValue( skel, key, self )
 

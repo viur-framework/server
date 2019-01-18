@@ -6,6 +6,7 @@ from server.skeleton import RefSkel, skeletonByKind
 import logging
 
 class DefaultRender(object):
+	rendererName = "json"
 
 	def __init__(self, parent = None, *args, **kwargs):
 		super(DefaultRender,  self).__init__(*args, **kwargs)
@@ -25,7 +26,9 @@ class DefaultRender(object):
 		:rtype: dict
 		"""
 
-		# Base bone contents.
+		for renderer in reversed( self.rendererName.split( "." ) ):
+			if renderer + "_renderBoneStructure" in dir( bone ):
+				return getattr( bone, renderer + "_renderBoneStructure" )( self )
 
 		return bone.renderBoneStructure( self )
 
@@ -76,8 +79,11 @@ class DefaultRender(object):
 		:return: A dict containing the rendered attributes.
 		:rtype: dict
 		"""
+		for renderer in reversed( self.rendererName.split( "." ) ):
+			if renderer + "_renderBoneValue" in dir( bone ):
+				return getattr( bone, renderer + "_renderBoneValue")( skel, key, self )
 
-		return bone.renderBoneValue(skel,key,self)
+		return bone.renderBoneValue( skel, key, self )
 
 
 	def renderSkelValues(self, skel):

@@ -121,23 +121,18 @@ class selectBone(baseBone):
 			} )
 		return ret
 
-	def renderBoneValue( self, skel, boneName, rendererObj = None, *args, **kwargs ):
-		from server.render.html import default as htmlrenderer
-
-		if isinstance(rendererObj,htmlrenderer):  # datetime object is not json serializable
-			skelValue = skel[ boneName ]
-			if self.multiple and not isinstance( skelValue, list ):
-				return [ rendererObj.KeyValueWrapper( skelValue, self.values[ skelValue ] ) ]
-			elif self.multiple:
-				return [
-					rendererObj.KeyValueWrapper( val, self.values[ val ] ) if val in self.values else val
-					for val in skelValue
-					]
-			elif skelValue in self.values:
-				return rendererObj.KeyValueWrapper( skelValue, self.values[ skelValue ] )
-			return skelValue
-		else:
-			return super(selectBone, self).renderBoneValue(skel,boneName,rendererObj,*args,**kwargs)
+	def html_renderBoneValue( self, skel, boneName, renderer = None, *args, **kwargs ):
+		skelValue = skel[ boneName ]
+		if self.multiple and not isinstance( skelValue, list ):
+			return [ renderer.KeyValueWrapper( skelValue, self.values[ skelValue ] ) ]
+		elif self.multiple:
+			return [
+				renderer.KeyValueWrapper( val, self.values[ val ] ) if val in self.values else val
+				for val in skelValue
+			]
+		elif skelValue in self.values:
+			return renderer.KeyValueWrapper( skelValue, self.values[ skelValue ] )
+		return skelValue
 
 
 class selectOneBone(selectBone):
