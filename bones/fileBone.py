@@ -25,31 +25,37 @@ class fileBone(treeItemBone):
 		else:
 			raise ValueError("Unknown value for bone %s (%s)" % (name, str(type(valuesCache[name]))))
 
-	def unserialize( self, valuesCache, name, expando ):
-		res = super( fileBone, self ).unserialize( valuesCache, name, expando )
+	def unserialize(self, valuesCache, name, expando):
+		res = super(fileBone, self).unserialize(valuesCache, name, expando)
+		currentValue = valuesCache[name]
 		if not request.current.get().isDevServer:
 			# Rewrite all "old" Serving-URLs to https if we are not on the development-server
-			if isinstance(valuesCache[name], dict) and valuesCache[name]["dest"].get("servingurl"):
-				if valuesCache[name]["dest"]["servingurl"].startswith("http://"):
-					valuesCache[name]["dest"]["servingurl"] = valuesCache[name]["dest"]["servingurl"].replace("http://","https://")
-			elif isinstance( valuesCache[name], list ):
-				for val in valuesCache[name]:
-					if isinstance(val, dict) and val["dest"].get("servingurl"):
-						if val["dest"]["servingurl"].startswith("http://"):
-							val["dest"]["servingurl"] = val["dest"]["servingurl"].replace("http://","https://")
-		if isinstance(valuesCache[name], dict):
-			if not "mimetype" in valuesCache[name]["dest"] or not valuesCache[name]["dest"]["mimetype"]:
-				if "meta_mime" in valuesCache[name]["dest"] and valuesCache[name]["dest"]["meta_mime"]:
-					valuesCache[name]["dest"]["mimetype"] = valuesCache[name]["dest"]["meta_mime"]
-				elif "metamime" in valuesCache[name]["dest"] and valuesCache[name]["dest"]["metamime"]:
-					valuesCache[name]["dest"]["mimetype"] = valuesCache[name]["dest"]["metamime"]
-		elif isinstance(valuesCache[name], list):
-			for val in valuesCache[name]:
-				if not "mimetype" in val["dest"] or not val["dest"]["mimetype"]:
-					if "meta_mime" in val["dest"] and val["dest"]["meta_mime"]:
-						val["dest"]["mimetype"] = val["dest"]["meta_mime"]
-					elif "metamime" in val["dest"] and val["dest"]["metamime"]:
-						val["dest"]["mimetype"] = val["dest"]["metamime"]
+			if isinstance(currentValue, dict) and "servingurl" in currentValue["dest"]:
+				currentValueDest = currentValue["dest"]
+				if currentValueDest["servingurl"].startswith("http://"):
+					currentValueDest["servingurl"] = currentValueDest["servingurl"].replace("http://", "https://")
+			elif isinstance(currentValue, list):
+				for val in currentValue:
+					if isinstance(val, dict) and "servingurl" in val["dest"]:
+						valDest = val["dest"]
+						if valDest["servingurl"].startswith("http://"):
+							valDest["servingurl"] = valDest["servingurl"].replace("http://", "https://")
+
+		if isinstance(currentValue, dict):
+			currentValueDest = currentValue["dest"]
+			if "mimetype" not in currentValueDest or not currentValueDest["mimetype"]:
+				if "meta_mime" in currentValueDest and currentValueDest["meta_mime"]:
+					currentValueDest["mimetype"] = currentValueDest["meta_mime"]
+				elif "metamime" in currentValueDest and currentValueDest["metamime"]:
+					currentValueDest["mimetype"] = currentValueDest["metamime"]
+		elif isinstance(currentValue, list):
+			for val in currentValue:
+				valDest = val["dest"]
+				if "mimetype" not in valDest or not valDest["mimetype"]:
+					if "meta_mime" in valDest and valDest["meta_mime"]:
+						valDest["mimetype"] = valDest["meta_mime"]
+					elif "metamime" in valDest and valDest["metamime"]:
+						valDest["mimetype"] = valDest["metamime"]
 		return res
 
 	def refresh(self, valuesCache, boneName, skel):
