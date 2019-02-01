@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from server.render.baseRender import baseRender
 import utils as jinjaUtils
 from wrap import ListWrapper, SkelListWrapper
 
@@ -11,7 +12,7 @@ from jinja2 import Environment, FileSystemLoader, ChoiceLoader
 
 import os, logging, codecs
 
-class Render( object ):
+class Render( baseRender ):
 	"""
 		The core jinja2 render.
 
@@ -51,7 +52,8 @@ class Render( object ):
 	cloneSuccessTemplate = "clone_success"
 
 	__haveEnvImported_ = False
-	rendererName = "html"
+	renderType = renderMaintype = "html"
+
 
 	class KeyValueWrapper:
 		"""
@@ -185,27 +187,6 @@ class Render( object ):
 
 		return ChoiceLoader([FileSystemLoader(htmlpath), FileSystemLoader("server/template/")])
 
-	def renderBoneStructure(self, bone):
-		"""
-		Renders the structure of a bone.
-
-		This function is used by :func:`renderSkelStructure`.
-		can be overridden and super-called from a custom renderer.
-
-		:param bone: The bone which structure should be rendered.
-		:type bone: Any bone that inherits from :class:`server.bones.base.baseBone`.
-
-		:return: A dict containing the rendered attributes.
-		:rtype: dict
-		"""
-
-		for renderer in reversed( self.rendererName.split( "." ) ):
-			if renderer + "_renderBoneStructure" in dir( bone ):
-				return getattr( bone, renderer + "_renderBoneStructure" )( self )
-
-		return bone.renderBoneStructure( self )
-
-
 	def renderSkelStructure(self, skel):
 		"""
 			Dumps the structure of a :class:`server.db.skeleton.Skeleton`.
@@ -230,27 +211,6 @@ class Render( object ):
 				res[key]["error"] = None
 
 		return res
-
-	def renderBoneValue(self, bone, skel, key):
-		"""
-		Renders the value of a bone.
-
-		This function is used by :func:`collectSkelData`.
-		It can be overridden and super-called from a custom renderer.
-
-		:param bone: The bone which value should be rendered.
-		:type bone: Any bone that inherits from :class:`server.bones.base.baseBone`.
-
-		:return: A dict containing the rendered attributes.
-		:rtype: dict
-		"""
-		for renderer in reversed( self.rendererName.split( "." ) ):
-			if renderer + "_renderBoneValue" in dir( bone ):
-				return getattr( bone, renderer + "_renderBoneValue")( skel, key, self )
-
-		return bone.renderBoneValue( skel, key, self )
-
-
 
 	def collectSkelData(self, skel):
 		"""

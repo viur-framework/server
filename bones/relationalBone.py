@@ -1048,5 +1048,11 @@ class relationalBone( baseBone ):
 				"rel":usingData
 				}
 
+	def vi_renderBoneValue( self, skel, boneName, renderer = None, *args, **kwargs ):
+		return self.json_renderBoneValue( skel, boneName, renderer, *args, **kwargs )
+
+	def admin_renderBoneValue( self, skel, boneName, renderer = None, *args, **kwargs ):
+		return self.json_renderBoneValue( skel, boneName, renderer, *args, **kwargs )
+
 	def xml_renderBoneValue( self, skel, boneName, renderer = None, *args, **kwargs ):
 		return self.json_renderBoneValue( skel, boneName, renderer, *args, **kwargs )

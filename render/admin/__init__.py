@@ -12,7 +12,8 @@ from server import session
 import datetime, json
 
 class default( DefaultRender ):
-	rendererName = "json.admin"
+	renderType = "admin"
+	renderMaintype = "json"
 
 __all__=[ default ]
 

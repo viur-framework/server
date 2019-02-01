@@ -1,4 +1,5 @@
 from server.render.json.default import DefaultRender as default
 
 class DefaultRender( default ):
-	rendererName = "json.vi"
+	renderType = "vi"
+	renderMaintype = "json"
