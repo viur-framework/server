@@ -5,8 +5,8 @@ from server.render.html.utils import jinjaGlobalFunction, jinjaGlobalFilter
 from server.render.html.wrap import ListWrapper, SkelListWrapper
 import urllib
 from hashlib import sha512
-from google.appengine.ext import db
-from google.appengine.api import memcache, users
+#from google.appengine.ext import db
+#from google.appengine.api import memcache, users
 from collections import OrderedDict
 import string
 import logging

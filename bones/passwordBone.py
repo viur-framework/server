@@ -5,7 +5,7 @@ from hashlib import sha256
 import hmac
 from struct import Struct
 from operator import xor
-from itertools import izip, starmap
+from itertools import starmap
 from server.config import conf
 import string, random
 
@@ -20,9 +20,9 @@ def pbkdf2( password, salt, iterations=1001, keylen=42):
 		:license: BSD, see LICENSE for more details.
 	"""
 	_pack_int = Struct('>I').pack
-	if isinstance( password, unicode ):
+	if isinstance( password, str ):
 		password = password.encode("UTF-8")
-	if isinstance( salt, unicode ):
+	if isinstance( salt, str ):
 		salt = salt.encode("UTF-8")
 	mac = hmac.new(password, None, sha256)
 	def _pseudorandom(x, mac=mac):
@@ -30,11 +30,11 @@ def pbkdf2( password, salt, iterations=1001, keylen=42):
 		h.update(x)
 		return map(ord, h.digest())
 	buf = []
-	for block in xrange(1, -(-keylen // mac.digest_size) + 1):
+	for block in range(1, -(-keylen // mac.digest_size) + 1):
 		rv = u = _pseudorandom(salt + _pack_int(block))
-		for i in xrange(iterations - 1):
+		for i in range(iterations - 1):
 			u = _pseudorandom(''.join(map(chr, u)))
-			rv = starmap(xor, izip(rv, u))
+			rv = starmap(xor, zip(rv, u))
 		buf.extend(rv)
 	return (''.join(map(chr, buf))[:keylen]).encode("hex")
 

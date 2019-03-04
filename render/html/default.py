@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-import utils as jinjaUtils
-from wrap import ListWrapper, SkelListWrapper
+from . import utils as jinjaUtils
+from .wrap import ListWrapper, SkelListWrapper
 
 from server import utils, request, errors, securitykey
 from server.skeleton import Skeleton, BaseSkeleton, RefSkel, skeletonByKind
@@ -93,7 +93,7 @@ class Render( object ):
 		super( Render, self ).__init__(*args, **kwargs)
 		if not Render.__haveEnvImported_:
 			# We defer loading our plugins to this point to avoid circular imports
-			import env
+			import server.render.html.env
 			Render.__haveEnvImported_ = True
 		self.parent = parent
 

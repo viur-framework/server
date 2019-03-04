@@ -1,9 +1,3 @@
 # -*- coding: utf-8 -*-
 
-import \
-	date, \
-	debug, \
-	regex, \
-	session, \
-	strings, \
-	viur
+from server.render.html.env import date, debug, regex, session,	strings, viur

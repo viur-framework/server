@@ -4,7 +4,7 @@ import logging
 
 class booleanBone( baseBone ):
 	type = "bool"
-	trueStrs = [unicode(True), u"1", u"yes"]
+	trueStrs = [str(True), "1", "yes"]
 
 	@staticmethod
 	def generageSearchWidget(target,name="BOOLEAN BONE"):

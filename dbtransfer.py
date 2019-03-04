@@ -13,11 +13,11 @@ from server.prototypes.tree import TreeLeafSkel
 
 from server.render.json.default import DefaultRender
 
-from google.appengine.api import datastore, datastore_types, urlfetch
-from google.appengine.ext import blobstore
-from google.appengine.ext.blobstore import BlobInfo
-from google.appengine.api.images import get_serving_url
-from google.appengine.datastore import datastore_query
+#from google.appengine.api import datastore, datastore_types, urlfetch
+#from google.appengine.ext import blobstore
+#from google.appengine.ext.blobstore import BlobInfo
+#from google.appengine.api.images import get_serving_url
+#from google.appengine.datastore import datastore_query
 
 from itertools import izip
 from hashlib import sha256

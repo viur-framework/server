@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from google.appengine.api import search
+#from google.appengine.api import search
 from server.config import conf
 from server import db
 import logging

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import time, json
 from string import Template
-import default
+from . import default
 from server.skeleton import Skeleton
 
-class Render( default.Render ): #Render user-data to xml
+class Render( default ): #Render user-data to xml
 	loginTemplate = "user_login"
 	logoutSuccessTemplate = "user_logout_success"
 	loginSuccessTemplate = "user_login_success"

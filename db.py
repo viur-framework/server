@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-from google.appengine.api import datastore, datastore_types, datastore_errors
-from google.appengine.datastore import datastore_query, datastore_rpc
-from google.appengine.api import memcache
-from google.appengine.api import search
+#from google.appengine.api import datastore, datastore_types, datastore_errors
+#from google.appengine.datastore import datastore_query, datastore_rpc
+#from google.appengine.api import memcache
+#from google.appengine.api import search
 from server.config import conf
 import logging
 
@@ -1006,7 +1006,7 @@ class Query( object ):
 		return( res )
 
 
-class Entity( datastore.Entity ):
+class Entity( dict ):
 	"""
 		Wraps ``datastore.Entity`` to prevent trying to add a string with more than 500 chars
 		to an index and providing a camelCase-API.
@@ -1122,44 +1122,44 @@ class Entity( datastore.Entity ):
 		return( res )
 
 
-AllocateIdsAsync = datastore.AllocateIdsAsync
-AllocateIds = datastore.AllocateIds
-RunInTransaction = datastore.RunInTransaction
-RunInTransactionCustomRetries = datastore.RunInTransactionCustomRetries
-RunInTransactionOptions = datastore.RunInTransactionOptions
-TransactionOptions = datastore_rpc.TransactionOptions
+AllocateIdsAsync = lambda x: x  # datastore.AllocateIdsAsync
+AllocateIds = lambda x: x  # datastore.AllocateIds
+RunInTransaction = lambda x: x  #datastore.RunInTransaction
+RunInTransactionCustomRetries = lambda x: x  #datastore.RunInTransactionCustomRetries
+RunInTransactionOptions = lambda x: x  #datastore.RunInTransactionOptions
+TransactionOptions = lambda x: x  #datastore_rpc.TransactionOptions
 
-Key = datastore_types.Key
+Key = lambda x: x  #datastore_types.Key
 
 ## Errors ##
-Error = datastore_errors.Error
-BadValueError = datastore_errors.BadValueError
-BadPropertyError = datastore_errors.BadPropertyError
-BadRequestError = datastore_errors.BadRequestError
-EntityNotFoundError = datastore_errors.EntityNotFoundError
-BadArgumentError = datastore_errors.BadArgumentError
-QueryNotFoundError = datastore_errors.QueryNotFoundError
-TransactionNotFoundError = datastore_errors.TransactionNotFoundError
-Rollback = datastore_errors.Rollback
-TransactionFailedError = datastore_errors.TransactionFailedError
-BadFilterError = datastore_errors.BadFilterError
-BadQueryError = datastore_errors.BadQueryError
-BadKeyError = datastore_errors.BadKeyError
-InternalError = datastore_errors.InternalError
-NeedIndexError = datastore_errors.NeedIndexError
-ReferencePropertyResolveError = datastore_errors.ReferencePropertyResolveError
-Timeout = datastore_errors.Timeout
-CommittedButStillApplying = datastore_errors.CommittedButStillApplying
+Error = lambda x: x  #datastore_errors.Error
+BadValueError = lambda x: x  #datastore_errors.BadValueError
+BadPropertyError = lambda x: x  #datastore_errors.BadPropertyError
+BadRequestError = lambda x: x  #datastore_errors.BadRequestError
+EntityNotFoundError = lambda x: x  #datastore_errors.EntityNotFoundError
+BadArgumentError = lambda x: x  #datastore_errors.BadArgumentError
+QueryNotFoundError = lambda x: x  #datastore_errors.QueryNotFoundError
+TransactionNotFoundError = lambda x: x  #datastore_errors.TransactionNotFoundError
+Rollback = lambda x: x  #datastore_errors.Rollback
+TransactionFailedError = lambda x: x  #datastore_errors.TransactionFailedError
+BadFilterError = lambda x: x  #datastore_errors.BadFilterError
+BadQueryError = lambda x: x  #datastore_errors.BadQueryError
+BadKeyError = lambda x: x  #datastore_errors.BadKeyError
+InternalError = lambda x: x  #datastore_errors.InternalError
+NeedIndexError = lambda x: x  #datastore_errors.NeedIndexError
+ReferencePropertyResolveError = lambda x: x  #datastore_errors.ReferencePropertyResolveError
+Timeout = lambda x: x  #datastore_errors.Timeout
+CommittedButStillApplying = lambda x: x  #datastore_errors.CommittedButStillApplying
 
-DatastoreQuery = datastore.Query
-MultiQuery = datastore.MultiQuery
-Cursor = datastore_query.Cursor
-IsInTransaction = datastore.IsInTransaction
+DatastoreQuery = lambda x: x  #datastore.Query
+MultiQuery = lambda x: x  #datastore.MultiQuery
+Cursor = lambda x: x  #datastore_query.Cursor
+IsInTransaction = lambda x: x  #datastore.IsInTransaction
 
 #Consts
-KEY_SPECIAL_PROPERTY = datastore_types.KEY_SPECIAL_PROPERTY
-ASCENDING = datastore_query.PropertyOrder.ASCENDING
-DESCENDING = datastore_query.PropertyOrder.DESCENDING
+KEY_SPECIAL_PROPERTY = lambda x: x  #datastore_types.KEY_SPECIAL_PROPERTY
+ASCENDING = lambda x: x  #datastore_query.PropertyOrder.ASCENDING
+DESCENDING = lambda x: x  #datastore_query.PropertyOrder.DESCENDING
 
 __all__ = [	PutAsync, Put, GetAsync, Get, DeleteAsync, Delete, AllocateIdsAsync, AllocateIds, RunInTransaction, RunInTransactionCustomRetries, RunInTransactionOptions, TransactionOptions,
 		Error, BadValueError, BadPropertyError, BadRequestError, EntityNotFoundError, BadArgumentError, QueryNotFoundError, TransactionNotFoundError, Rollback,

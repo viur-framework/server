@@ -10,8 +10,8 @@ from urlparse import urlparse
 from quopri import decodestring
 from base64 import urlsafe_b64decode
 from hashlib import sha256
-from google.appengine.ext import blobstore
-from google.appengine.api import images
+#from google.appengine.ext import blobstore
+#from google.appengine.api import images
 import email.header
 import collections, logging, cgi, string
 

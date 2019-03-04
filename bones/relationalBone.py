@@ -4,8 +4,8 @@ from server.bones.bone import getSystemInitialized
 from server import db
 from server.errors import ReadFromClientError
 from server.utils import normalizeKey
-from google.appengine.api import search
-import extjson
+#from google.appengine.api import search
+import json
 from time import time
 from datetime import datetime
 import logging

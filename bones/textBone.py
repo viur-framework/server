@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-import HTMLParser
-import htmlentitydefs
+from html.parser import HTMLParser
+from html import entities as htmlentitydefs
 
-from google.appengine.api import search
+#from google.appengine.api import search
 
 from server import db
 from server.bones import baseBone
@@ -30,10 +30,10 @@ _defaultTags = {
 }
 del _attrsDescr, _attrsSpacing, _attrsMargins
 
-class HtmlSerializer( HTMLParser.HTMLParser ): #html.parser.HTMLParser
+class HtmlSerializer( HTMLParser ): #html.parser.HTMLParser
 	def __init__(self, validHtml=None ):
 		global _defaultTags
-		HTMLParser.HTMLParser.__init__(self)
+		HTMLParser.__init__(self)
 		self.result = ""
 		self.openTagsList = []
 		self.validHtml = validHtml

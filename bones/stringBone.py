@@ -5,7 +5,7 @@ from server import db
 from server import request
 from server import utils
 from server.session import current as currentSession
-from google.appengine.api import search
+#from google.appengine.api import search
 import logging
 
 

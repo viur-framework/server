@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from google.appengine.api import memcache, app_identity, mail
-from google.appengine.ext import deferred
-import new, os
+#from google.appengine.api import memcache, app_identity, mail
+#from google.appengine.ext import deferred
 from server import db
 import string, random, base64
 from server import conf
 import logging
-from itertools import izip
+#from itertools import izip
 
 
 def generateRandomString( length=13 ):

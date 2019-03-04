@@ -32,23 +32,25 @@ import sys, traceback, os, inspect
 # All (optional) 3rd-party modules in our libs-directory
 cwd = os.path.abspath(os.path.dirname(__file__))
 
-for lib in os.listdir( os.path.join(cwd, "libs") ):
-	if not lib.lower().endswith(".zip"): #Skip invalid file
-		continue
-	sys.path.insert(0, os.path.join( cwd, "libs", lib ) )
+#for lib in os.listdir( os.path.join(cwd, "libs") ):
+#	if not lib.lower().endswith(".zip"): #Skip invalid file
+#		continue
+#	sys.path.insert(0, os.path.join( cwd, "libs", lib ) )
 
-from server.config import conf, sharedConf
+from server.config import conf
 from server import request
 import server.languages as servertrans
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp.util import run_wsgi_app
-from google.appengine.api import users
-import urlparse
+#from google.appengine.ext import webapp
+#from google.appengine.ext.webapp.util import run_wsgi_app
+#from google.appengine.api import users
+#import urlparse
+from urllib import parse
 
 from string import Template
-from StringIO import StringIO
+from io import StringIO
 import logging
 from time import time
+import webob
 
 # Copy our Version into the config so that our renders can access it
 conf["viur.version"] = __version__
@@ -323,7 +325,7 @@ def buildApp( config, renderers, default=None, *args, **kwargs ):
 
 	return res
 
-class BrowseHandler(webapp.RequestHandler):
+class BrowseHandler():  # webapp.RequestHandler
 	"""
 		This class accepts the requests, collect its parameters and routes the request
 		to its destination function.
@@ -331,8 +333,88 @@ class BrowseHandler(webapp.RequestHandler):
 		:warning: Don't instantiate! Don't subclass! DON'T TOUCH! ;)
 	"""
 
+	# COPY START
+
+	def redirect(uri, permanent=False, abort=False, code=None, body=None,
+				 request=None, response=None):
+		"""Issues an HTTP redirect to the given relative URI.
+
+		This won't stop code execution unless **abort** is True. A common
+		practice is to return when calling this method::
+
+			return redirect('/some-path')
+
+		:param uri:
+			A relative or absolute URI (e.g., ``'../flowers.html'``).
+		:param permanent:
+			If True, uses a 301 redirect instead of a 302 redirect.
+		:param abort:
+			If True, raises an exception to perform the redirect.
+		:param code:
+			The redirect status code. Supported codes are 301, 302, 303, 305,
+			and 307.  300 is not supported because it's not a real redirect
+			and 304 because it's the answer for a request with defined
+			``If-Modified-Since`` headers.
+		:param body:
+			Response body, if any.
+		:param request:
+			Optional request object. If not set, uses :func:`get_request`.
+		:param response:
+			Optional response object. If not set, a new response is created.
+		:returns:
+			A :class:`Response` instance.
+		"""
+		if uri.startswith(('.', '/')):
+			request = request or get_request()
+			uri = str(urljoin(request.url, uri))
+
+		if code is None:
+			if permanent:
+				code = 301
+			else:
+				code = 302
+
+		assert code in (301, 302, 303, 305, 307), \
+			'Invalid redirect status code.'
+
+		if abort:
+			headers = response.headers.copy() if response is not None else []
+			headers['Location'] = uri
+			_abort(code, headers=headers)
+
+		if response is None:
+			request = request or get_request()
+			response = request.app.response_class()
+		else:
+			response.body = b""
+
+		response.headers['Location'] = uri
+		response.status = code
+		if body is not None:
+			response.write(body)
+
+		return response
+
+	# COPY END
+
+
+
+	def __init__(self, request, response):
+		super()
+		self.request = request
+		self.response = response
+		reqestMethod = self.request.method.lower()
+		if reqestMethod not in ["get", "post", "head"]:
+			logging.error("Not supported")
+			return
+		self.isPostRequest = reqestMethod == "post"
+		self.processRequest(self.request.path)
+
+	"""
 	def get(self, path="/", *args, **kwargs): #Accept a HTTP-GET request
 		t1 = time()
+		logging.error(self.request.path)
+		logging.error(self.request.method)
 		if path=="_ah/start" or path=="_ah/warmup": #Warmup request
 			self.response.out.write("OK")
 			return
@@ -350,6 +432,8 @@ class BrowseHandler(webapp.RequestHandler):
 	def head(self, path="/", *args, **kwargs): #Accept a HTTP-HEAD request
 		self.isPostRequest = False
 		self.processRequest( path, *args, **kwargs )
+
+	"""
 
 	def selectLanguage( self, path ):
 		"""
@@ -398,7 +482,7 @@ class BrowseHandler(webapp.RequestHandler):
 
 	def processRequest( self, path, *args, **kwargs ): #Bring up the enviroment for this request, handle errors
 		self.internalRequest = False
-		self.isDevServer = "Development" in os.environ['SERVER_SOFTWARE'] #Were running on development Server
+		self.isDevServer = True or "Development" in os.environ['SERVER_SOFTWARE'] #Were running on development Server
 		self.isSSLConnection = self.request.host_url.lower().startswith("https://") #We have an encrypted channel
 		self.language = conf["viur.defaultLanguage"]
 		self.disableCache = False # Shall this request bypass the caches?
@@ -430,15 +514,6 @@ class BrowseHandler(webapp.RequestHandler):
 				self.response.headers["X-Frame-Options"] = "allow-from %s" % uri
 		if conf["viur.security.xPermittedCrossDomainPolicies"] is not None:
 			self.response.headers["X-Permitted-Cross-Domain-Policies"] = conf["viur.security.xPermittedCrossDomainPolicies"]
-		if sharedConf["viur.disabled"] and not (users.is_current_user_admin() or "HTTP_X_QUEUE_NAME".lower() in [x.lower() for x in os.environ.keys()] ): #FIXME: Validate this works
-			self.response.set_status( 503 ) #Service unavailable
-			tpl = Template( open("server/template/error.html", "r").read() )
-			if isinstance( sharedConf["viur.disabled"], basestring ):
-				msg = sharedConf["viur.disabled"]
-			else:
-				msg = "This application is currently disabled or performing maintenance. Try again later."
-			self.response.out.write( tpl.safe_substitute( {"error_code": "503", "error_name": "Service unavailable", "error_descr": msg} ) )
-			return
 		if conf["viur.forceSSL"] and not self.isSSLConnection and not self.isDevServer:
 			isWhitelisted = False
 			reqPath = self.request.path
@@ -470,7 +545,7 @@ class BrowseHandler(webapp.RequestHandler):
 		except errors.HTTPException as e:
 			if conf["viur.debug.traceExceptions"]:
 				raise
-			self.response.clear()
+			self.response.body = b""
 			self.response.set_status(e.status, e.descr)
 			res = None
 			if conf["viur.errorHandler"]:
@@ -487,7 +562,7 @@ class BrowseHandler(webapp.RequestHandler):
 		except Exception as e: #Something got really wrong
 			logging.error("Viur caught an unhandled exception!")
 			logging.exception(e)
-			self.response.clear()
+			self.response.body = b""
 			self.response.set_status( 500 )
 			res = None
 			if conf["viur.errorHandler"]:
@@ -525,28 +600,45 @@ class BrowseHandler(webapp.RequestHandler):
 
 	def findAndCall( self, path, *args, **kwargs ): #Do the actual work: process the request
 		# Prevent Hash-collision attacks
-		assert len( self.request.arguments() ) < conf["viur.maxPostParamsCount"]
-		# Fill the (surprisingly empty) kwargs dict with named request params
-		tmpArgs = dict((k,self.request.get_all(k)) for k in self.request.arguments() if k is not None)
-		for key in tmpArgs.keys()[ : ]:
-			if len( tmpArgs[ key ] ) == 0:
-				continue
-			if not key in kwargs:
-				if len( tmpArgs[ key ] ) == 1:
-					kwargs[ key ] = tmpArgs[ key ][0]
+
+		kwargs = {}
+		stopCount = conf["viur.maxPostParamsCount"]
+		for key, value in self.request.params.iteritems():
+			if key in kwargs:
+				if isinstance(kwargs[key], list):
+					kwargs[key].append(value)
 				else:
-					kwargs[ key ] = tmpArgs[ key ]
+					kwargs[key] = [kwargs[key], value]
 			else:
-				if isinstance( kwargs[key], list ):
-					kwargs[key] = kwargs[key] + tmpArgs[key]
-				else:
-					kwargs[key] = [ kwargs[key] ] + tmpArgs[key]
-		del tmpArgs
+				kwargs[key] = value
+			stopCount -= 1
+			if not stopCount:  # We reached zero; maximum PostParamsCount excceded
+				raise errors.NotAcceptable()
+		#assert len(self.request.params) < conf["viur.maxPostParamsCount"]
+		#logging.error(self.request.params)
+		## Fill the (surprisingly empty) kwargs dict with named request params
+		#tmpArgs = dict((k,self.request.get_all(k)) for k in self.request.arguments() if k is not None)
+		#for key in tmpArgs.keys()[ : ]:
+		#	if len( tmpArgs[ key ] ) == 0:
+		#		continue
+		#	if not key in kwargs:
+		#		if len( tmpArgs[ key ] ) == 1:
+		#			kwargs[ key ] = tmpArgs[ key ][0]
+		#		else:
+		#			kwargs[ key ] = tmpArgs[ key ]
+		#	else:
+		#		if isinstance( kwargs[key], list ):
+		#			kwargs[key] = kwargs[key] + tmpArgs[key]
+		#		else:
+		#			kwargs[key] = [ kwargs[key] ] + tmpArgs[key]
+		#del tmpArgs
 		if "self" in kwargs: #self is reserved for bound methods
 			raise errors.BadRequest()
 		#Parse the URL
-		path = urlparse.urlparse( path ).path
-		self.pathlist = [ urlparse.unquote( x ) for x in path.strip("/").split("/") ]
+		path = parse.urlparse( path ).path
+		self.pathlist = [ parse.unquote( x ) for x in path.strip("/").split("/") ]
+		logging.error("xx1")
+		logging.error(self.pathlist)
 		caller = conf["viur.mainApp"]
 		idx = 0 #Count how may items from *args we'd have consumed (so the rest can go into *args of the called func
 		for currpath in self.pathlist:
@@ -590,8 +682,10 @@ class BrowseHandler(webapp.RequestHandler):
 			raise( errors.MethodNotAllowed("You must use POST to access this ressource!") )
 		self.args = []
 		for arg in args:
-			if isinstance( x, unicode):
-				self.args.append( arg )
+			logging.error(arg)
+			logging.error(type(arg))
+			if isinstance(arg, str):
+				self.args.append(arg)
 			else:
 				try:
 					self.args.append( arg.decode("UTF-8") )
@@ -654,46 +748,17 @@ def setup( modules, render=None, default="html" ):
 		(=> /user instead of /html/user)
 		:type default: str
 	"""
-	import skeletons
-	from server.skeleton import Skeleton
-	from server.bones import bone
 
-	conf["viur.skeletons"] = {}
-	for modelKey in dir( skeletons ):
-		skelCls = getattr( skeletons, modelKey )
-		for key in dir( skelCls ):
-			skel = getattr( skelCls, key )
-			try:
-				isSkelClass = issubclass( skel, Skeleton )
-			except TypeError:
-				continue
-			if isSkelClass:
-				if not skel.kindName:
-					# Looks like a common base-class for skeletons
-					continue
-				if skel.kindName in conf["viur.skeletons"] and skel!=conf["viur.skeletons"][ skel.kindName ]:
-					# We have a conflict here, lets see if one skeleton is from server.*, and one from skeletons.*
-					relNewFileName = inspect.getfile(skel).replace( os.getcwd(),"" )
-					relOldFileName = inspect.getfile(conf["viur.skeletons"][ skel.kindName ]).replace( os.getcwd(),"" )
-					if relNewFileName.strip(os.path.sep).startswith("server"):
-						#The currently processed skeleton is from the server.* package
-						continue
-					elif relOldFileName.strip(os.path.sep).startswith("server"):
-						#The old one was from server - override it
-						conf["viur.skeletons"][ skel.kindName ] = skel
-						continue
-					raise ValueError("Duplicate definition for %s" % skel.kindName)
-				conf["viur.skeletons"][ skel.kindName ] = skel
 	if not render:
 		import server.render
 		render = server.render
 	conf["viur.mainApp"] = buildApp( modules, render, default )
 	renderPrefix = [ "/%s" % x for x in dir( render ) if (not x.startswith("_") and x!=default) ]+[""]
-	conf["viur.wsgiApp"] = webapp.WSGIApplication( [(r'/(.*)', BrowseHandler)] )
+	#conf["viur.wsgiApp"] = webob.WSGIApplication( [(r'/(.*)', BrowseHandler)] )
 	# Ensure that our Content Security Policy Header Cache gets build
 	from server import securityheaders
 	securityheaders._rebuildCspHeaderCache()
-	bone.setSystemInitialized()
+	#bone.setSystemInitialized()
 	# Assert that all security releated headers are in a sane state
 	if conf["viur.security.contentSecurityPolicy"] and conf["viur.security.contentSecurityPolicy"]["_headerCache"]:
 		for k, v in conf["viur.security.contentSecurityPolicy"]["_headerCache"].items():
@@ -713,15 +778,47 @@ def setup( modules, render=None, default="html" ):
 		if mode == "allow-from":
 			assert uri is not None and (
 			uri.lower().startswith("https://") or uri.lower().startswith("http://"))
-	runStartupTasks() #Add a deferred call to run all queued startup tasks
-	return( conf["viur.wsgiApp"] )
+	#runStartupTasks() #Add a deferred call to run all queued startup tasks
+	return app
 
 
 def run():
 	"""
 		Runs the previously configured server.
 	"""
-	run_wsgi_app( conf["viur.wsgiApp"] )
+	#run_wsgi_app( conf["viur.wsgiApp"] )
+
+
+class ResWrap(webob.Response):
+	def set_status(self, code, message=None):
+		"""Sets the HTTP status code of this response.
+
+		:param code:
+			The HTTP status string to use
+		:param message:
+			A status string. If none is given, uses the default from the
+			HTTP/1.1 specification.
+		"""
+		if message:
+			self.status = '%d %s' % (code, message)
+		else:
+			self.status = code
+
+	@property
+	def out(self):
+		"""A reference to the Response instance itself, for compatibility with
+		webapp only: webapp uses `Response.out.write()`, so we point `out` to
+		`self` and it will use `Response.write()`.
+		"""
+		return self
+
+
+def app(environ, start_response):
+
+	req = webob.Request(environ)
+	resp = ResWrap()
+	handler = BrowseHandler(req, resp)
+	return resp(environ, start_response)
 
 ## Decorators ##
 def forceSSL( f ):

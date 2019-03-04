@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime, timedelta
-from google.appengine.ext import db
-from google.appengine.api import memcache
+#from google.appengine.ext import db
+#from google.appengine.api import memcache
 import sys
 
 apiVersion = 1 #What format do we use to store data in the bigtable
@@ -79,66 +79,5 @@ conf = {
 }
 
 
-class SharedConf():
-	"""
-		The *SharedConf* is shared between **ALL** instances of the application.
 
-		For access, the singleton ``sharedConf`` should be used instead of instancing this class.
-		It takes up to 60 Seconds before changes get visible on all instances.
-
-		:warning: Changes here are replicated between **ALL** instances!\
-		Don't use this feature for real-time, high-traffic inter-instance communication.
-	"""
-	class SharedConfData( db.Expando ): # DB-Representation
-		pass
-
-	data = {
-		"viur.disabled": False,
-		"viur.apiVersion": apiVersion
-	}
-
-	ctime = datetime(2000, 1, 1, 0, 0, 0)
-	updateInterval = timedelta(seconds=60) #Every 60 Secs
-	keyName = "viur-sharedconf"
-
-	def __init__(self):
-		disabled = self["viur.disabled"] #Read the config if it exists
-
-	def __getitem__(self, key):
-		currTime = datetime.now()
-		if currTime>self.ctime+self.updateInterval:
-			data = memcache.get( self.keyName )
-			if data: #Loaded successfully from Memcache
-				self.data.update( data )
-				self.ctime = currTime
-			else:
-				data = SharedConf.SharedConfData.get_by_key_name( self.keyName )
-				if data:
-					for k in data.dynamic_properties():
-						self.data[ k ] = getattr( data, k )
-				else: #There isnt any config in the db nor the memcache
-					data = SharedConf.SharedConfData( key_name=self.keyName )
-					for k,v in self.data.items(): #Initialize the DB-Config
-						setattr( data, k, v )
-					data.put()
-				memcache.set( self.keyName, self.data, 60*60*24 )
-		return( self.data[ key ] )
-
-	def __setitem__(self, key, value ):
-		self.data[ key ] = value
-		memcache.set( self.keyName, self.data, 60*60*24 )
-		data = SharedConf.SharedConfData.get_by_key_name( self.keyName )
-		if not data:
-			data = SharedConf.SharedConfData( key_name=self.keyName )
-			for k,v in self.data.items(): #Initialize the DB-Config
-				setattr( data, k, v )
-		else:
-			setattr( data, key, value )
-		data.put()
-
-
-if "viur_doc_build" in dir(sys):
-	from mock import MagicMock
-	sharedConf = MagicMock()
-else:
-	sharedConf = SharedConf()
+sharedConf = {}
