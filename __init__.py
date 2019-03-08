@@ -482,7 +482,7 @@ class BrowseHandler():  # webapp.RequestHandler
 
 	def processRequest( self, path, *args, **kwargs ): #Bring up the enviroment for this request, handle errors
 		self.internalRequest = False
-		self.isDevServer = True or "Development" in os.environ['SERVER_SOFTWARE'] #Were running on development Server
+		self.isDevServer = os.environ['GAE_ENV']=="localdev" #Were running on development Server
 		self.isSSLConnection = self.request.host_url.lower().startswith("https://") #We have an encrypted channel
 		self.language = conf["viur.defaultLanguage"]
 		self.disableCache = False # Shall this request bypass the caches?
@@ -703,7 +703,7 @@ class BrowseHandler():  # webapp.RequestHandler
 		try:
 			if (conf["viur.debug.traceExternalCallRouting"] and not self.internalRequest) or conf["viur.debug.traceInternalCallRouting"]:
 				logging.debug("Calling %s with args=%s and kwargs=%s" % (str(caller),unicode(args), unicode(kwargs)))
-			self.response.out.write( caller( *self.args, **self.kwargs ) )
+			self.response.out.write(str(caller( *self.args, **self.kwargs )))
 		except TypeError as e:
 			if self.internalRequest: #We provide that "service" only for requests originating from outside
 				raise
@@ -712,7 +712,7 @@ class BrowseHandler():  # webapp.RequestHandler
 			argsOrder = list( caller.__code__.co_varnames )[ 1 : caller.__code__.co_argcount ]
 			# Map default values in
 			reversedArgsOrder = argsOrder[ : : -1]
-			for defaultValue in list( caller.func_defaults or [] )[ : : -1]:
+			for defaultValue in list( caller.__defaults__ or [] )[ : : -1]:
 				tmpRes[ reversedArgsOrder.pop( 0 ) ] = defaultValue
 			del reversedArgsOrder
 			# Map args in
