@@ -251,12 +251,15 @@ class relationalBone( baseBone ):
 		return entity
 
 	def postSavedHandler( self, valuesCache, boneName, skel, key, dbfields ):
-		if not valuesCache[boneName]:
+		if boneName not in valuesCache:
+			return
+
+		if not valuesCache.get(boneName):
 			values = []
-		elif isinstance( valuesCache[boneName], dict ):
-			values = [ dict( (k,v) for k,v in valuesCache[boneName].items() ) ]
+		elif isinstance( valuesCache.get(boneName), dict ):
+			values = [ dict( (k,v) for k,v in valuesCache.get(boneName).items() ) ]
 		else:
-			values = [ dict( (k,v) for k,v in x.items() ) for x in valuesCache[boneName] ]
+			values = [ dict( (k,v) for k,v in x.items() ) for x in valuesCache.get(boneName) ]
 
 		parentValues = {}
 
@@ -766,14 +769,14 @@ class relationalBone( baseBone ):
 				for key in self._refSkelCache.keys():
 					if key == "key":
 						continue
-					elif key in newValues:
-						getattr(self._refSkelCache, key).unserialize(valDict, key, newValues)
+
+					getattr(self._refSkelCache, key).unserialize(valDict, key, newValues)
 
 
 		if not valuesCache[boneName]:
 			return
 
-		logging.info("Refreshing relationalBone %s of %s" % (boneName, skel.kindName))
+		logging.debug("Refreshing relationalBone %s of %s" % (boneName, skel.kindName))
 
 		if isinstance(valuesCache[boneName], dict):
 			updateInplace(valuesCache[boneName])

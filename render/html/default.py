@@ -138,7 +138,7 @@ class Render( object ):
 						template+".html" ]
 		for fn in fnames: #check subfolders
 			prefix = template.split("_")[0]
-			if os.path.isfile(os.path.join(os.getcwd(), "html", prefix, fn)):
+			if os.path.isfile(os.path.join(os.getcwd(), htmlpath, prefix, fn)):
 				return ( "%s/%s" % (prefix, fn ) )
 		for fn in fnames: #Check the templatefolder of the application
 			if os.path.isfile( os.path.join( os.getcwd(), htmlpath, fn ) ):
@@ -855,7 +855,8 @@ class Render( object ):
 		if len(tpl)<101:
 			try:
 				template = self.getEnv().from_string(  codecs.open( "emails/"+tpl+".email", "r", "utf-8" ).read() )
-			except:
+			except Exception as err:
+				logging.exception(err)
 				template = self.getEnv().get_template( tpl+".email" )
 		else:
 			template = self.getEnv().from_string( tpl )
