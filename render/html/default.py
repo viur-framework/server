@@ -350,8 +350,6 @@ class Render( object ):
 			else:
 				return None
 		else:
-			#logging.error("RETURNING")
-			#logging.error((skel[key]))
 			return skel[key]
 
 		return None
@@ -367,7 +365,6 @@ class Render( object ):
 			:returns: A dictionary or list of dictionaries.
 			:rtype: dict | list
 		"""
-		#logging.error("collectSkelData %s", skel)
 		if isinstance(skel, list):
 			return [self.collectSkelData(x) for x in skel]
 		res = {}
@@ -514,7 +511,7 @@ class Render( object ):
 		template = self.getEnv().get_template( self.getTemplateFileName( tpl ) )
 		res = self.collectSkelData( skel )
 		return template.render(skel=res, params=params, **kwargs)
-	
+
 	def deleteSuccess(self, skel, tpl = None, params = None, *args, **kwargs):
 		"""
 			Renders a page, informing that the entry has been successfully deleted.
@@ -540,7 +537,7 @@ class Render( object ):
 
 		template = self.getEnv().get_template( self.getTemplateFileName( tpl ) )
 		return template.render(params=params, **kwargs)
-	
+
 	def list( self, skellist, tpl=None, params=None, **kwargs ):
 		"""
 			Renders a list of entries.
@@ -571,7 +568,7 @@ class Render( object ):
 		for skel in skellist:
 			resList.append( self.collectSkelData(skel) )
 		return template.render(skellist=SkelListWrapper(resList, skellist), params=params, **kwargs)
-	
+
 	def listRootNodes(self, repos, tpl=None, params=None, **kwargs ):
 		"""
 			Renders a list of available repositories.
@@ -628,7 +625,7 @@ class Render( object ):
 		else:
 			res = skel
 		return template.render(skel=res, params=params, **kwargs)
-	
+
 
 	## Extended functionality for the Tree-Application ##
 	def listRootNodeContents( self, subdirs, entries, tpl=None, params=None, **kwargs):

@@ -146,8 +146,9 @@ class Tree(BasicApplication):
 
 ## Internal exposed functions
 
+	@exposed
 	@internalExposed
-	def pathToKey( self, key ):
+	def pathToKey( self, key, *args, **kwargs ):
 		"""
 		Returns the recursively expanded path through the Tree from the root-node to the given *key*.
 
@@ -180,7 +181,7 @@ class Tree(BasicApplication):
 
 			res.append( self.render.collectSkelData( nodeSkel ) )
 
-		return( res[ : : -1 ] )
+		return self.render.view( res[ : : -1 ] )
 
 	def ensureOwnUserRootNode( self ):
 		"""
