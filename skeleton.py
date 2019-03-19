@@ -1011,7 +1011,7 @@ def updateRelations(destID, minChangeTime, cursor=None, limit=5):
 			db.Delete(srcRel)
 			continue
 
-		if "viur_src_property" not in skel:
+		if srcRel["viur_src_property"] not in skel:
 			logging.info("Deleting %r which refers to unknown property %s", str(srcRel.key()), srcRel["viur_src_property"])
 			db.Delete(srcRel)
 			continue
