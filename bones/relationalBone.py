@@ -55,7 +55,7 @@ class relationalBone( baseBone ):
 				the value of "type" will be used (the kindName must match the moduleName)
 			:type type: String
 			:param refKeys: A list of properties to include from the referenced property. These properties will be
-				avaiable in the template without having to fetch the referenced property. Filtering is also only possible
+				available in the template without having to fetch the referenced property. Filtering is also only possible
 				by properties named here!
 			:type refKeys: List of Strings
 			:param parentKeys: A list of properties from the current skeleton to include. If mixing filtering by
@@ -254,12 +254,12 @@ class relationalBone( baseBone ):
 		if boneName not in valuesCache:
 			return
 
-		if not valuesCache[boneName]:
+		if not valuesCache.get(boneName):
 			values = []
-		elif isinstance( valuesCache[boneName], dict ):
-			values = [ dict( (k,v) for k,v in valuesCache[boneName].items() ) ]
+		elif isinstance( valuesCache.get(boneName), dict ):
+			values = [ dict( (k,v) for k,v in valuesCache.get(boneName).items() ) ]
 		else:
-			values = [ dict( (k,v) for k,v in x.items() ) for x in valuesCache[boneName] ]
+			values = [ dict( (k,v) for k,v in x.items() ) for x in valuesCache.get(boneName) ]
 
 		parentValues = {}
 
@@ -769,8 +769,8 @@ class relationalBone( baseBone ):
 				for key in self._refSkelCache.keys():
 					if key == "key":
 						continue
-					elif key in newValues:
-						getattr(self._refSkelCache, key).unserialize(valDict, key, newValues)
+
+					getattr(self._refSkelCache, key).unserialize(valDict, key, newValues)
 
 
 		if not valuesCache[boneName]:
