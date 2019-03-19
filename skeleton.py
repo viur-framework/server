@@ -2,7 +2,7 @@
 
 from server import db, utils, conf, errors
 from server.bones import baseBone, boneFactory, keyBone, dateBone, selectBone, relationalBone, stringBone
-from server.tasks import CallableTask, CallableTaskBase, callDeferred
+from server.tasks import CallableTask, CallableTaskBase, callDeferred, noRetry
 from collections import OrderedDict
 from threading import local
 from time import time
@@ -984,29 +984,45 @@ class SkelList( list ):
 
 ### Tasks ###
 
+
 @callDeferred
-def updateRelations( destID, minChangeTime, cursor=None ):
-	logging.debug("Starting updateRelations for %s ; minChangeTime %s", destID, minChangeTime)
-	updateListQuery = db.Query( "viur-relations" ).filter("dest.key =", destID ).filter("viur_delayed_update_tag <",minChangeTime)
-	if cursor:
-		updateListQuery.cursor( cursor )
-	updateList = updateListQuery.run(limit=5)
+@noRetry
+def updateRelations(destID, minChangeTime, cursor=None, limit=5):
+	logging.debug("Starting updateRelations for %r, minChangeTime %s", destID, minChangeTime)
+
+	updateListQuery = db.Query("viur-relations")
+	updateListQuery.filter("dest.key =", destID)
+	updateListQuery.filter("viur_delayed_update_tag <", minChangeTime)
+	updateListQuery.cursor(cursor)
+
+	updateList = updateListQuery.run(limit=limit)
 
 	for srcRel in updateList:
 		try:
 			skel = skeletonByKind(srcRel["viur_src_kind"])()
+
 		except AssertionError:
-			logging.info("Deleting %s which refers to unknown kind %s" % (str(srcRel.key()), srcRel["viur_src_kind"]))
+			logging.info("Deleting %r which refers to unknown kind %s", str(srcRel.key()), srcRel["viur_src_kind"])
+			db.Delete(srcRel)
 			continue
 
-		if not skel.fromDB( str(srcRel.key().parent()) ):
-			logging.warning("Cannot update stale reference to %s (referenced from %s)" % (str(srcRel.key().parent()), str(srcRel.key())))
+		if not skel.fromDB(str(srcRel.key().parent())):
+			logging.warning("Cannot update stale reference to %r (referenced from %r)", str(srcRel.key().parent()), str(srcRel.key()))
+			db.Delete(srcRel)
 			continue
-		for key,_bone in skel.items():
-			_bone.refresh(skel.valuesCache, key, skel)
-		skel.toDB( clearUpdateTag=True )
-	if len(updateList)==5:
-		updateRelations( destID, minChangeTime, updateListQuery.getCursor().urlsafe() )
+
+		if "viur_src_property" not in skel:
+			logging.info("Deleting %r which refers to unknown property %s", str(srcRel.key()), srcRel["viur_src_property"])
+			db.Delete(srcRel)
+			continue
+
+		for key, bone in skel.items():
+			bone.refresh(skel.valuesCache, key, skel)
+
+		skel.toDB(clearUpdateTag=True)
+
+	if len(updateList) == limit:
+		updateRelations(destID, minChangeTime, updateListQuery.getCursor().urlsafe())
 
 
 @CallableTask
