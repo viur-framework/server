@@ -113,6 +113,27 @@ class selectBone(baseBone):
 
 		return True
 
+	def renderBoneStructure( self, rendererObj = None, *args, **kwargs ):
+		ret = super(selectBone, self).renderBoneStructure(rendererObj, *args, **kwargs)
+		ret.update( {
+			"values":OrderedDict( [ (k, _( v )) for (k, v) in self.values.items() ] ),
+			"multiple":self.multiple
+			} )
+		return ret
+
+	def html_renderBoneValue( self, skel, boneName, renderer = None, *args, **kwargs ):
+		skelValue = skel[ boneName ]
+		if self.multiple and not isinstance( skelValue, list ):
+			return [ renderer.KeyValueWrapper( skelValue, self.values[ skelValue ] ) ]
+		elif self.multiple:
+			return [
+				renderer.KeyValueWrapper( val, self.values[ val ] ) if val in self.values else val
+				for val in skelValue
+			]
+		elif skelValue in self.values:
+			return renderer.KeyValueWrapper( skelValue, self.values[ skelValue ] )
+		return skelValue
+
 
 class selectOneBone(selectBone):
 	def __init__(self, *args, **kwargs):

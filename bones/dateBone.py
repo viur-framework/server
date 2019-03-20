@@ -279,3 +279,30 @@ class dateBone( baseBone ):
 	def performMagic( self, valuesCache, name, isAdd ):
 		if (self.creationMagic and isAdd) or self.updateMagic:
 			self.setLocalized( valuesCache, name, ExtendedDateTime.now() )
+
+	def renderBoneStructure( self, renderer = None, *args, **kwargs ):
+		ret = super(dateBone, self).renderBoneStructure(renderer, *args, **kwargs)
+		ret.update( {
+			"date":self.date,
+			"time":self.time
+		} )
+		return ret
+
+	def json_renderBoneValue( self, skel, boneName, renderer = None, *args, **kwargs ):
+		if skel[ boneName ]:
+			if self.date and self.time:
+				return skel[ boneName ].strftime( "%d.%m.%Y %H:%M:%S" )
+			elif self.date:
+				return skel[ boneName ].strftime( "%d.%m.%Y" )
+
+			return skel[ boneName ].strftime( "%H:%M:%S" )
+		return None
+
+	def vi_renderBoneValue( self, skel, boneName, renderer = None, *args, **kwargs ):
+		return self.json_renderBoneValue( skel, boneName, renderer, *args, **kwargs )
+
+	def admin_renderBoneValue( self, skel, boneName, renderer = None, *args, **kwargs ):
+		return self.json_renderBoneValue( skel, boneName, renderer, *args, **kwargs )
+
+	def xml_renderBoneValue( self, skel, boneName, renderer = None, *args, **kwargs ):
+		return self.json_renderBoneValue( skel, boneName, renderer, *args, **kwargs )
