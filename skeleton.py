@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from server import db, utils, conf, errors
-from server.bones import baseBone, boneFactory, keyBone, dateBone, selectBone, relationalBone, stringBone
+from server.bones import baseBone, boneFactory, keyBone, dateBone, selectBone, booleanBone, relationalBone, stringBone
 from server.tasks import CallableTask, CallableTaskBase, callDeferred, noRetry
 from collections import OrderedDict
 from threading import local
@@ -543,7 +543,7 @@ class Skeleton(BaseSkeleton):
 		self["key"] = key
 		return (True)
 
-	def toDB(self, clearUpdateTag=False):
+	def toDB(self, clearUpdateTag=False, *args, **kwargs):
 		"""
 			Store current Skeleton entity to data store.
 
@@ -753,7 +753,7 @@ class Skeleton(BaseSkeleton):
 		skel.postSavedHandler(key, dbObj)
 
 		if not clearUpdateTag:
-			updateRelations(key, time() + 1)
+			updateRelations(key, time() + 1, **kwargs.get("kwargs.updateRelations", {}))
 
 		return (key)
 
@@ -984,14 +984,16 @@ class SkelList( list ):
 
 ### Tasks ###
 
-
 @callDeferred
 @noRetry
-def updateRelations(destID, minChangeTime, cursor=None, limit=5):
-	logging.debug("Starting updateRelations for %r, minChangeTime %s", destID, minChangeTime)
+def updateRelations(key, minChangeTime, cursor=None, limit=5, clear=False, *args, **kwargs):
+	logging.debug(
+		"Starting updateRelations for %r, minChangeTime %s, cursor=%r, limit=%r, clear=%r",
+		key, minChangeTime, cursor, limit, clear
+	)
 
 	updateListQuery = db.Query("viur-relations")
-	updateListQuery.filter("dest.key =", destID)
+	updateListQuery.filter("dest.key =", key)
 	updateListQuery.filter("viur_delayed_update_tag <", minChangeTime)
 	updateListQuery.cursor(cursor)
 
@@ -1002,18 +1004,30 @@ def updateRelations(destID, minChangeTime, cursor=None, limit=5):
 			skel = skeletonByKind(srcRel["viur_src_kind"])()
 
 		except AssertionError:
-			logging.info("Deleting %r which refers to unknown kind %s", str(srcRel.key()), srcRel["viur_src_kind"])
-			db.Delete(srcRel)
+			# The referenced skeleton does not exist in this data model.
+
+			# It may be the case that this skeleton still exists in another
+			# version of the current app, so it is safer to not delete it by default.
+
+			if clear:
+				logging.info("Deleting %r which refers to unknown kind %s", str(srcRel.key()), srcRel["viur_src_kind"])
+				db.Delete(srcRel)
+
 			continue
 
 		if not skel.fromDB(str(srcRel.key().parent())):
-			logging.warning("Cannot update stale reference to %r (referenced from %r)", str(srcRel.key().parent()), str(srcRel.key()))
-			db.Delete(srcRel)
+			# This behavior is wanted because references to deleted entities should be kept.
 			continue
 
 		if srcRel["viur_src_property"] not in skel:
-			logging.info("Deleting %r which refers to unknown property %s", str(srcRel.key()), srcRel["viur_src_property"])
-			db.Delete(srcRel)
+			# The referenced bone in the skeleton does not exist in this data model.
+
+			# It may be the case that this skeleton still exists in another
+			# version of the current app, so it is safer to not delete it by default.
+			if clear:
+				logging.info("Deleting %r which refers to unknown property %s", str(srcRel.key()), srcRel["viur_src_property"])
+				db.Delete(srcRel)
+
 			continue
 
 		for key, bone in skel.items():
@@ -1022,19 +1036,19 @@ def updateRelations(destID, minChangeTime, cursor=None, limit=5):
 		skel.toDB(clearUpdateTag=True)
 
 	if len(updateList) == limit:
-		updateRelations(destID, minChangeTime, updateListQuery.getCursor().urlsafe())
+		updateRelations(key, minChangeTime, updateListQuery.getCursor().urlsafe(), limit=limit, clear=clear)
 
 
 @CallableTask
-class TaskUpdateSearchIndex( CallableTaskBase ):
+class TaskUpdateSearchIndex(CallableTaskBase):
 	"""
 	This tasks loads and saves *every* entity of the given module.
 	This ensures an updated searchIndex and verifies consistency of this data.
 	"""
+
 	key = "rebuildSearchIndex"
 	name = u"Rebuild search index"
 	descr = u"This task can be called to update search indexes and relational information."
-
 
 	def canCall(self):
 		"""
@@ -1045,61 +1059,67 @@ class TaskUpdateSearchIndex( CallableTaskBase ):
 		return user is not None and "root" in user["access"]
 
 	def dataSkel(self):
-		modules = ["*"] + listKnownSkeletons()
 		skel = BaseSkeleton(cloned=True)
-		skel.module = selectBone( descr="Module", values={ x: x for x in modules}, required=True )
-		def verifyCompact(val):
-			if not val or val.lower()=="no" or val=="YES":
-				return None
-			return "Must be \"No\" or uppercase \"YES\" (very dangerous!)"
-		skel.compact = stringBone(descr="Recreate Entities", vfunc=verifyCompact, required=False, defaultValue="NO")
+		skel.module = selectBone(descr="Module", values=["*"] + sorted(listKnownSkeletons()), required=True)
+		skel.vacuumRelations = booleanBone(descr=u"Vacuum relations")
 		return skel
 
-
-	def execute(self, module, compact="", *args, **kwargs):
+	def execute(self, module, vacuumRelations=False, *args, **kwargs):
 		usr = utils.getCurrentUser()
+
 		if not usr:
 			logging.warning("Don't know who to inform after rebuilding finished")
 			notify = None
 		else:
 			notify = usr["name"]
+
+		vacuumRelations = str(vacuumRelations) in self.dataSkel().vacuumRelations.trueStrs
+
+		logging.debug("module = %r", module)
+		logging.debug("vacuumRelations = %r", vacuumRelations)
+
 		if module == "*":
 			for module in listKnownSkeletons():
 				logging.info("Rebuilding search index for module '%s'" % module)
-				processChunk(module, compact, None,  notify=notify)
+				processChunk(module, vacuumRelations, notify=notify)
+
 		else:
-			processChunk(module, compact, None, notify=notify)
+			processChunk(module, vacuumRelations, notify=notify)
 
 @callDeferred
-def processChunk(module, compact, cursor, allCount=0, notify=None):
+def processChunk(module, vacuumRelations=False, cursor=None, allCount=0, notify=None):
 	"""
 		Processes 100 Entries and calls the next batch
 	"""
-	Skel = skeletonByKind( module )
+	Skel = skeletonByKind(module)
 	if not Skel:
 		logging.error("TaskUpdateSearchIndex: Invalid module")
 		return
+
 	query = Skel().all().cursor( cursor )
 	count = 0
+
 	for key in query.run(25, keysOnly=True):
 		count += 1
 		try:
 			skel = Skel()
 			skel.fromDB(str(key))
-			if compact=="YES":
-				raise NotImplementedError() #FIXME: This deletes the __currentKey__ property..
-				skel.delete()
 			skel.refresh()
-			skel.toDB(clearUpdateTag=True)
+			skel.toDB(
+				clearUpdateTag=not vacuumRelations,
+				**{"kwargs.updateRelations": {"clear": vacuumRelations, "limit": 99}}
+			)
+
 		except Exception as e:
-			logging.error("Updating %s failed" % str(key) )
-			logging.exception( e )
+			logging.error("Updating %s failed" % str(key))
+			logging.exception(e)
 			raise
+
 	newCursor = query.getCursor()
 	logging.info("END processChunk %s, %d records refreshed" % (module, count))
 	if count and newCursor and newCursor.urlsafe() != cursor:
 		# Start processing of the next chunk
-		processChunk(module, compact, newCursor.urlsafe(), allCount + count, notify)
+		processChunk(module, vacuumRelations, newCursor.urlsafe(), allCount + count, notify)
 	else:
 		try:
 			if notify:
