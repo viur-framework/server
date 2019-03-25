@@ -731,7 +731,7 @@ class Render( object ):
 			:type destpath: str
 
 			:param type: "entry": Copy/Move an entry, everything else: Copy/Move an directory
-			:type type: string
+			:type type: str
 
 			:param deleteold: "0": Copy, "1": Move
 			:type deleteold: str
@@ -901,17 +901,14 @@ class Render( object ):
 
 			# Import functions.
 			for name, func in jinjaUtils.getGlobalFunctions().items():
-				#logging.debug("Adding global function'%s'" % name)
 				self.env.globals[name] = mkLambda(func, self)
 
 			# Import filters.
 			for name, func in jinjaUtils.getGlobalFilters().items():
-				#logging.debug("Adding global filter '%s'" % name)
 				self.env.filters[name] = mkLambda(func, self)
 
 			# Import extensions.
 			for ext in jinjaUtils.getGlobalExtensions():
-				#logging.debug("Adding global extension '%s'" % ext)
 				self.env.add_extension(ext)
 
 			# Import module-specific environment, if available.
