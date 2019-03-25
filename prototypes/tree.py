@@ -179,6 +179,9 @@ class Tree(BasicApplication):
 			if not nodeSkel.fromDB( parentdir ):
 				break
 
+			if not self.canView( "node", nodeSkel ):
+				continue
+
 			res.append( self.render.collectSkelData( nodeSkel ) )
 
 		return self.render.view( res[ : : -1 ] )
