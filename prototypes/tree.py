@@ -4,7 +4,7 @@ from server import forcePost, forceSSL, exposed, internalExposed
 
 from server.prototypes import BasicApplication
 from server.bones import baseBone, keyBone, numericBone
-from server.skeleton import Skeleton, skeletonByKind
+from server.skeleton import Skeleton, SkelList, skeletonByKind
 from server.tasks import callDeferred
 
 from datetime import datetime
@@ -148,9 +148,9 @@ class Tree(BasicApplication):
 
 	@exposed
 	@internalExposed
-	def pathToKey( self, key, *args, **kwargs ):
+	def pathToKey(self, key, *args, **kwargs):
 		"""
-		Returns the recursively expanded path through the Tree from the root-node to the given *key*.
+		Returns the recursively expanded path through the Tree from the root-node to te given *key*.
 
 		:param key: URL-safe key of the destination node.
 		:type key: str
@@ -159,32 +159,32 @@ class Tree(BasicApplication):
 		given node key.
 		:rtype: dict
 		"""
-		nodeSkel = self.viewNodeSkel()
+		skel = self.viewNodeSkel()
 
-		if not nodeSkel.fromDB( key ):
+		if not skel.fromDB(key):
 			raise errors.NotFound()
 
-		if not self.canList( "node", key ):
+		if not self.canList("node", key):
 			raise errors.Unauthorized()
 
-		res = [ self.render.collectSkelData( nodeSkel ) ]
+		res = SkelList(skel)
+		res.append(skel.getValuesCache())
 
-		for x in range(0,99):
-			if not nodeSkel["parentdir"]:
+		for x in range(0, 99):
+			if not skel["parentdir"]:
 				break
 
-			parentdir = nodeSkel["parentdir"]
-
-			nodeSkel = self.viewNodeSkel()
-			if not nodeSkel.fromDB( parentdir ):
+			parentdir = skel["parentdir"]
+			skel = self.viewNodeSkel()
+			if not skel.fromDB(parentdir):
 				break
 
-			if not self.canView( "node", nodeSkel ):
+			if not self.canView("node", skel):
 				continue
 
-			res.append( self.render.collectSkelData( nodeSkel ) )
+			res.insert(0, skel.getValuesCache())
 
-		return self.render.view( res[ : : -1 ] )
+		return self.render.list(res)
 
 	def ensureOwnUserRootNode( self ):
 		"""

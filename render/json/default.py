@@ -220,25 +220,6 @@ class DefaultRender(object):
 	def view(self, skel, action="view", params = None, *args, **kwargs):
 		return self.renderEntry(skel, action, params)
 
-	def collectSkelData(self, skel):
-		"""
-			Prepares values of one :class:`server.db.skeleton.Skeleton` or a list of skeletons for output.
-
-			:param skel: Skeleton which contents will be processed.
-			:type skel: server.db.skeleton.Skeleton
-
-			:returns: A dictionary or list of dictionaries.
-			:rtype: dict | list
-		"""
-		if isinstance(skel, list):
-			return [self.collectSkelData(x) for x in skel]
-		res = {}
-		for key, bone in skel.items():
-			val = self.renderBoneValue(bone, skel, key)
-			res[key] = val
-
-		return res
-
 	def add(self, skel, action = "add", params = None, **kwargs):
 		return self.renderEntry(skel, action, params)
 
