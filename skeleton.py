@@ -542,7 +542,7 @@ class Skeleton(BaseSkeleton):
 		self["key"] = key
 		return (True)
 
-	def toDB(self, clearUpdateTag=False, *args, **kwargs):
+	def toDB(self, clearUpdateTag=False):
 		"""
 			Store current Skeleton entity to data store.
 
@@ -784,7 +784,7 @@ class Skeleton(BaseSkeleton):
 		skel.postSavedHandler(key, dbObj)
 
 		if not clearUpdateTag:
-			updateRelations(key, time() + 1, **kwargs.get("kwargs.updateRelations", {}))
+			updateRelations(key, time() + 1)
 
 		return (key)
 
@@ -1137,9 +1137,11 @@ def processChunk(module, vacuumRelations=False, cursor=None, allCount=0, notify=
 			skel.fromDB(str(key))
 			skel.refresh()
 			skel.toDB(
-				clearUpdateTag=not vacuumRelations,
-				**{"kwargs.updateRelations": {"clear": vacuumRelations, "limit": 99}}
+				clearUpdateTag=not vacuumRelations
 			)
+
+			if vacuumRelations:
+				updateRelations(str(key), time() + 1, limit=25, clear=True)
 
 		except Exception as e:
 			logging.error("Updating %s failed" % str(key))
