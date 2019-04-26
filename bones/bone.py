@@ -158,9 +158,9 @@ class baseBone(object): # One Bone:
 		err = self.isInvalid( value )
 		if not err:
 			valuesCache[name] = value
-			return( True )
+			return None
 		else:
-			return( err )
+			return err
 
 	def isInvalid( self, value ):
 		"""
