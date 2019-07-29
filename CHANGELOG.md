@@ -2,7 +2,108 @@
 
 This file documents any relevant changes done to ViUR server since version 2.
 
-## [2.2.0 Etna] - 2018-04-23
+
+## [develop] - Current development version
+
+
+## [2.5.0] Vesuv - 2019-06-07
+
+### Added
+
+- updateLevel for relationalBones, to exclude specific bones from the automatic background update ([#170](https://github.com/viur-framework/server/pull/170))
+- vacuumRelations task to remove relation-objects from bones/kinds that don't exist anymore from viur-relations ([#169](https://github.com/viur-framework/server/pull/169))
+- the new recordBone which can store multiple sets of data for the bones inside it's relskel ([#148](https://github.com/viur-framework/server/pull/148))
+
+## [2.4.1] Agung - 2019-05-21
+
+### Fixed
+- Correctly expose our server-revision to the application ([#168](https://github.com/viur-framework/server/pull/168))
+- spatialGuaranteedCorrectness of bones/spatial on very sparse maps ([#167](https://github.com/viur-framework/server/pull/167))
+
+
+## [2.4.0] Agung - 2019-05-17
+
+### Added
+- Pagesize to sha256 cache key
+- Providing less or equal and more or equal comparision filters in queries. ([#77](https://github.com/viur-framework/server/pull/77))
+- `_queue` Parameter to deferred calls. This allows to enqueue deferred tasks to other, custom defined task-queues. ([#133](https://github.com/viur-framework/server/pull/133))
+- Default template for captchaBone ([#112](https://github.com/viur-framework/server/pull/112))
+- Add getAvailableRootNodes stub to hierarchy prototype ([#113](https://github.com/viur-framework/server/pull/113))
+- Provide logging of Stack-Trace if a noRetry Task failed ([#147](https://github.com/viur-framework/server/pull/147))
+
+### Changed
+- Ensure that the skeletons modules gets imported by the server ([#156](https://github.com/viur-framework/server/pull/156))
+- Replace our custom build WYSIWYG Editor with summernote ([#149](https://github.com/viur-framework/server/pull/149))
+- Unwrap several dictionary access in fileBone:unserialize ([#151](https://github.com/viur-framework/server/pull/151))
+- Renamed folder "icons" to "embedsvg" ([#85](https://github.com/viur-framework/server/pull/85))
+- Allow to select multiple kinds in DB import/export ([#102](https://github.com/viur-framework/server/pull/102))
+- Force SSL by default ([#132](https://github.com/viur-framework/server/pull/132))
+- Condense most of skeleton:toDB into a single loop ([#111](https://github.com/viur-framework/server/pull/111))
+- Limit the timewindow for second factor to 10 minutes ([#129](https://github.com/viur-framework/server/pull/129))
+- Several Bugfixes and enhancements to IndexManager ([#76](https://github.com/viur-framework/server/pull/76))
+- Improved internal handling of tests on servingurls ([#114](https://github.com/viur-framework/server/pull/114))
+- Preventing looping over empty language entries in in stringBone(mutiple=True) ([#120](https://github.com/viur-framework/server/pull/120))
+- Unified templates, removed camelcase, errorpage improved ([#123](https://github.com/viur-framework/server/pull/123))
+- Stability improvements on several bones ([#125](https://github.com/viur-framework/server/pull/125))
+- Log exception with traceback if loading or parsing of email templates fail ([#127](https://github.com/viur-framework/server/pull/127))
+- Dimensions (height and width) of an image are now provided by the refKeys of a fileBone ([#134](https://github.com/viur-framework/server/pull/134))
+- Dimensions will only fetch from blobstore if an image was uploaded. ([#161](https://github.com/viur-framework/server/pull/161))
+
+### Fixed
+- *[Severe]* Entries fetched with db.GetOrInsert and written with db.Put will now correctly flush the memcache ([#162](https://github.com/viur-framework/server/pull/162))
+- Server Error when calling /user/login ([#159](https://github.com/viur-framework/server/pull/159))
+- Correctly return None instead of true on success in bones/bone.py:fromClient ([#160](https://github.com/viur-framework/server/pull/160))
+- Invalid bone access in periodic tasks of modules/order.py ([#157](https://github.com/viur-framework/server/pull/157))
+- Signature of serialize() in randomSliceBone ([#98](https://github.com/viur-framework/server/pull/98))
+- Invalid dictionary access in template/editform_bone_select.html ([#152](https://github.com/viur-framework/server/pull/152))
+- Search for templates in the correct path if the htmlpath has been overridden by the class variable. ([#108](https://github.com/viur-framework/server/pull/108))
+- Several typos, readability and incorrect docstrings ([#109](https://github.com/viur-framework/server/pull/109) [#135](https://github.com/viur-framework/server/pull/135) [#140](https://github.com/viur-framework/server/pull/140) [#143](https://github.com/viur-framework/server/pull/143))
+- RelationalBone: Ensure relationalBones can be saved even if no value had been set ([#82](https://github.com/viur-framework/server/pull/82))
+- Prevent IndexError in updateURL if we received an empty parameter (?=1) and remove that param from the output ([#118](https://github.com/viur-framework/server/pull/118))
+- Fixing relationalBone.refresh() to update translated bones also. ([#119](https://github.com/viur-framework/server/pull/119))
+- Fix isinstance Check in db.PutAsync ([#146](https://github.com/viur-framework/server/pull/146))
+- Allow in-tests in values of selectBone ([#139](https://github.com/viur-framework/server/pull/139))
+- The dbtransfer/upload to correctly obtain the oldBlobKey ([#103](https://github.com/viur-framework/server/pull/103))
+- Improved handling of email-recipient-override in utils.sendMail ([#136](https://github.com/viur-framework/server/pull/136))
+- Allow setting a dateBone back to None again ([#155](https://github.com/viur-framework/server/pull/155))
+
+### Removed
+- pytz. It's now provided in the base repo 
+- Obsolete modules/drive_video.py ([#150](https://github.com/viur-framework/server/pull/150))
+- Several (commented) debugs and loggings ([#83](https://github.com/viur-framework/server/pull/83))
+- visible=False enforcement for magic dateBones ([#128](https://github.com/viur-framework/server/pull/128))
+- Google checkout module (was broken and not in use) ([#145](https://github.com/viur-framework/server/pull/145))
+- Bugsnag and all related parts from ViUR ([#138](https://github.com/viur-framework/server/pull/138))
+
+
+## [2.3.0] Kilauea - 2018-10-02
+
+### Added
+- A generic `redirect()` function from Jinja templates
+
+### Changed
+- Upgraded captchaBone to recaptcha v2
+- uid bone of userSkeleton is not required anymore
+- Allow usage of None as value in `Query().filter()`, which is a valid type in datastore
+
+### Fixed
+- Saving skeletons containing a `randomSliceBone` due to signature mismatch in `randomSliceBone.serialize()`
+- Correct filtering by `dateBone` with either `date=False` or `time=False`
+- Importing entities from pre 2.x ViUR instances
+- Call doCleanupDeletedFiles and doDeleteWeakReferences deferred
+- Avoid invalid search queries instead of raising an exception
+- Correctly handle an unset property in `stringBone.getSearchDocumentFields()`
+- Correctly log the exception caught when raising an 500 Server-Error due to an unhandled exception in the code
+- Basic Syntax-Fixes for `spatialBone`
+- Prevent two words from being stuffed together if we remove an invalid html tag in `textBone`
+- Correctly remove an property from the `unindexed_property` list if the bone changes to indexed
+- Sorting in relational queries
+- Incorrect path to the ViUR logo in error.css
+- Adapted default templates to work with the selectBone introduced in 2.2.0
+- `baseBone.buildDBFilter()` incorrectly handling lt/gt/lk operators
+
+
+## [2.2.0] Etna - 2018-04-23
 
 ### Added
 - A new Rate-Limit module that can be used to prevent DoS / Brute-Force on certain resources.
@@ -121,3 +222,16 @@ This file documents any relevant changes done to ViUR server since version 2.
 ## [2.0.0] - 2016-12-22
 
 ### (Start of changelog)
+
+
+[develop]: https://github.com/viur-framework/server/compare/v2.5.0...develop
+[2.5.0]: https://github.com/viur-framework/server/compare/v2.4.1...v2.5.0
+[2.4.1]: https://github.com/viur-framework/server/compare/v2.4.0...v2.4.1
+[2.4.0]: https://github.com/viur-framework/server/compare/v2.3.0...v2.4.0
+[2.3.0]: https://github.com/viur-framework/server/compare/v2.2.0...v2.3.0
+[2.2.0]: https://github.com/viur-framework/server/compare/v2.1.0...v2.2.0
+[2.1.0]: https://github.com/viur-framework/server/compare/v2.0.3...v2.1.0
+[2.0.3]: https://github.com/viur-framework/server/compare/v2.0.2...v2.0.3
+[2.0.2]: https://github.com/viur-framework/server/compare/v2.0.1...v2.0.2
+[2.0.1]: https://github.com/viur-framework/server/compare/v2.0.0...v2.0.1
+[2.0.0]: https://github.com/viur-framework/server/compare/v1.1.0...v2.0.0
