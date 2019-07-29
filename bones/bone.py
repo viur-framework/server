@@ -366,16 +366,27 @@ class baseBone(object): # One Bone:
 		"""
 			Returns an hash for our current value, used to store in the uniqueProptertyValue index.
 		"""
-		if valuesCache[name] is None:
-			return( None )
-		h = hashlib.sha256()
-		h.update( unicode( valuesCache[name] ).encode("UTF-8") )
-		res = h.hexdigest()
-		if isinstance( valuesCache[name], int ) or isinstance( valuesCache[name], float ) or isinstance( valuesCache[name], long ):
-			return("I-%s" % res )
-		elif isinstance( valuesCache[name], str ) or isinstance( valuesCache[name], unicode ):
-			return("S-%s" % res )
-		raise NotImplementedError("Type %s can't be safely used in an uniquePropertyIndex" % type(valuesCache[name]) )
+		values = valuesCache[name]
+		if values is None:
+			return None
+		res = []
+		# Make value a list so we can loop over it in any case
+		if not isinstance(values, list):
+			values = [values]
+		for item in values:
+			h = hashlib.sha256()
+			h.update( unicode( item ).encode("UTF-8") )
+			# res = h.hexdigest()
+			if isinstance( item, int ) or isinstance( item, float ) or isinstance( item, long ):
+				res.append("I-%s" % h.hexdigest() )
+			elif isinstance( item, str ) or isinstance( item, unicode ):
+				res.append("S-%s" % h.hexdigest() )
+			else:
+				raise NotImplementedError("Type %s can't be safely used in an uniquePropertyIndex" % type(item) )
+		if isinstance(valuesCache[name], list):
+			return res
+		# Return back to original non-list
+		return res[0]
 
 	def getReferencedBlobs( self, valuesCache, name ):
 		"""

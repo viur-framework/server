@@ -153,6 +153,8 @@ class UserPassword(object):
 
 		# Check if the username matches
 		storedUserName = res.get("name.idx", "")
+		if isinstance(storedUserName, list):  # Multiple emails: only use main one (first in list)
+			storedUserName = storedUserName[0]
 		if len(storedUserName) != len(name.lower()):
 			isOkay = False
 		else:
@@ -202,7 +204,10 @@ class UserPassword(object):
 			skel = self.lostPasswordSkel()
 			if len(kwargs)==0 or not skel.fromClient(kwargs) or not securitykey.validate(skey):
 				return self.userModule.render.passwdRecover(skel, tpl=self.passwordRecoveryTemplate)
-			user = self.userModule.viewSkel().all().filter("name.idx =", skel["name"].lower()).get()
+			skel_name = skel["name"]
+			if isinstance(skel_name, list):   # Multiple emails: only use main one (first in list)
+				skel_name = skel_name[0]
+			user = self.userModule.viewSkel().all().filter("name.idx =", skel_name.lower()).get()
 
 			if not user or user["status"]<10: # Unknown user or locked account
 				skel.errors["name"] = _("Unknown user")
@@ -742,6 +747,7 @@ def createNewUserIfNotExists():
 	"""
 		Create a new Admin user, if the userDB is empty
 	"""
+	logging.warning("createNewUserIfNotExists")
 	userMod = getattr(conf["viur.mainApp"], "user", None)
 	if (userMod # We have a user module
 		and isinstance(userMod, User)
