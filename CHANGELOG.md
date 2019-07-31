@@ -5,6 +5,9 @@ This file documents any relevant changes done to ViUR server since version 2.
 
 ## [develop] - Current development version
 
+### Fixed
+
+-  file/getUploadURL correctly checks if uploading a file is allowed for a given node
 
 ## [2.5.0] Vesuv - 2019-06-07
 

@@ -173,12 +173,13 @@ class File(Tree):
 				skel.delete()
 
 	@exposed
-	def getUploadURL( self, *args, **kwargs ):
-		skey = kwargs.get("skey", "")
-		if not self.canAdd("leaf", None):
+	def getUploadURL(self, node=None, skey=None, *args, **kwargs):
+		if not self.canAdd("leaf", node):
 			raise errors.Forbidden()
+
 		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
+
 		return blobstore.create_upload_url("%s/upload" % self.modulePath)
 
 	@internalExposed
