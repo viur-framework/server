@@ -13,8 +13,7 @@ This file documents any relevant changes done to ViUR server since version 2.
 
 ### Added
 
-- updateLevel for relationalBones, to exclude specific bones from thpwd
-e automatic background update ([#170](https://github.com/viur-framework/server/pull/170))
+- updateLevel for relationalBones, to exclude specific bones from the automatic background update ([#170](https://github.com/viur-framework/server/pull/170))
 - vacuumRelations task to remove relation-objects from bones/kinds that don't exist anymore from viur-relations ([#169](https://github.com/viur-framework/server/pull/169))
 - the new recordBone which can store multiple sets of data for the bones inside it's relskel ([#148](https://github.com/viur-framework/server/pull/148))
 
