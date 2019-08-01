@@ -237,12 +237,7 @@ class DefaultRender(object):
 		if not isinstance(params, dict):
 			return params
 
-		res = params.copy()
-		for key in ["category", "tooltip"]:
-			if key in res.keys():
-				res[key] = _(res[key])
-
-		return res
+		return {key: (_(value) if key in ["category", "tooltip"] else value) for key, value in params.items()}
 
 	def view(self, skel, action="view", params = None, *args, **kwargs):
 		return self.renderEntry(skel, action, params)
