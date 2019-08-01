@@ -30,7 +30,7 @@ class DefaultRender(object):
 			"descr": _(bone.descr),
 	        "type": bone.type,
 			"required": bone.required,
-			"params": bone.params,
+			"params": self.preprocessParams(bone.params),
 			"visible": bone.visible,
 			"readonly": bone.readOnly,
 			"unique": bone.unique
@@ -223,6 +223,22 @@ class DefaultRender(object):
 		request.current.get().response.headers["Content-Type"] = "application/json"
 		return json.dumps(res)
 
+	def preprocessParams(self, params):
+		"""
+		Translate params to support multilingual categories and tooltips.
+
+		:param params: Params dictionary which values should be translated. If we get no dictionary, we do nothing.
+		:type params: dict
+
+		:return: Params dictionary with translated values.
+		:rtype: dict
+		"""
+
+		if not isinstance(params, dict):
+			return params
+
+		return {key: (_(value) if key in ["category", "tooltip"] else value) for key, value in params.items()}
+
 	def view(self, skel, action="view", params = None, *args, **kwargs):
 		return self.renderEntry(skel, action, params)
 
@@ -255,10 +271,10 @@ class DefaultRender(object):
 
 	def editItemSuccess(self, skel, params=None, **kwargs):
 		return self.renderEntry(skel, "editSuccess", params)
-		
+
 	def addItemSuccess(self, skel, params=None, **kwargs):
 		return self.renderEntry(skel, "addSuccess", params)
-		
+
 	def addDirSuccess(self, rootNode,  path, dirname, params=None, *args, **kwargs):
 		return json.dumps("OKAY")
 

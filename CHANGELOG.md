@@ -5,6 +5,9 @@ This file documents any relevant changes done to ViUR server since version 2.
 
 ## [develop] - Current development version
 
+### Added
+- translate bone params _category_ and _tooltip_ in json renderer
+
 
 ## [2.5.0] Vesuv - 2019-06-07
 
