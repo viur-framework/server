@@ -360,18 +360,40 @@ class BrowseHandler(webapp.RequestHandler):
 		elif conf["viur.languageMethod"] == "url":
 			tmppath = urlparse.urlparse( path ).path
 			tmppath = [ urlparse.unquote( x ) for x in tmppath.lower().strip("/").split("/") ]
+			langSet = False
 			if len( tmppath )>0 and tmppath[0] in conf["viur.availableLanguages"]+list( conf["viur.languageAliasMap"].keys() ):
 				self.language = tmppath[0]
-				return( path[ len( tmppath[0])+1: ] ) #Return the path stripped by its language segment
+				langSet = True
+				return path[ len( tmppath[0])+1: ]  # Return the path stripped by its language segment
 			else: # This URL doesnt contain an language prefix, try to read it from session
 				if session.current.getLanguage():
 					self.language = session.current.getLanguage()
-				elif "X-Appengine-Country" in self.request.headers.keys():
+					langSet = True
+				if not langSet and "Accept-Language" in self.request.headers:
+					acceptLangHeader = self.request.headers["Accept-Language"]
+					if acceptLangHeader:
+						acceptLangHeader = acceptLangHeader.split(",")
+						for possibleLang in acceptLangHeader[:7]:
+							try:
+								lng, regionEtc = possibleLang.split("-", 1)
+							except ValueError:
+								lng = possibleLang
+
+							if lng in conf["viur.availableLanguages"] or lng in conf["viur.languageAliasMap"]:
+								self.language = lng
+								langSet = True
+								break
+							elif ";" in lng:
+								lng, weight = lng.split(";")
+								if lng in conf["viur.availableLanguages"] or lng in conf["viur.languageAliasMap"]:
+									self.language = lng
+									langSet = True
+									break
+				if not langSet and "X-Appengine-Country" in self.request.headers.keys():
 					lng = self.request.headers["X-Appengine-Country"].lower()
 					if lng in conf["viur.availableLanguages"] or lng in conf["viur.languageAliasMap"]:
 						self.language = lng
-		return( path )
-
+		return path
 
 	def processRequest( self, path, *args, **kwargs ): #Bring up the enviroment for this request, handle errors
 		self.internalRequest = False
