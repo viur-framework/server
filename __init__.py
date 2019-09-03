@@ -383,10 +383,11 @@ class BrowseHandler(webapp.RequestHandler):
 								if lng in conf["viur.availableLanguages"] or lng in conf["viur.languageAliasMap"]:
 									self.language = lng
 									return path
-				elif "X-Appengine-Country" in self.request.headers.keys():
+				if "X-Appengine-Country" in self.request.headers.keys():
 					lng = self.request.headers["X-Appengine-Country"].lower()
 					if lng in conf["viur.availableLanguages"] or lng in conf["viur.languageAliasMap"]:
 						self.language = lng
+						return path
 		return path
 
 	def processRequest( self, path, *args, **kwargs ): #Bring up the enviroment for this request, handle errors
