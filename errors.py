@@ -38,7 +38,7 @@ class Redirect( HTTPException ):
 		Causes an 303 - See Other (or 302 - Found if requested / 301 - Moved Permanently) redirect
 	"""
 	def __init__( self, url, descr="Redirect", status=303 ):
-		super( Redirect, self ).__init__(  status=303, name = "Redirect", descr=descr )
+		super( Redirect, self ).__init__(  status=status, name="Redirect", descr=descr )
 		self.url = url
 
 class Unauthorized( HTTPException ):
