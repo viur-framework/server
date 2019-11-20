@@ -7,6 +7,7 @@ This file documents any relevant changes done to ViUR server since version 2.
 
 ### Added
 - Add support for frame-ancestors directive in content security policy
+- Modified selectBone to handle values from callable
 
 ### Fixed
 - Removed counter on delete recursive in tree module. This is no longer possible since it works deferred.
