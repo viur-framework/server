@@ -573,6 +573,9 @@ def renderEditForm(render, skel, ignore=None, hide=None):
 			                                 boneWasInvalid = boneWasInvalid,
 			                                 editWidget = editWidget)
 
+		if not categoryContent:
+			continue
+
 		res += sectionTpl.render(categoryName=category,
 		                         categoryClassName = "".join([x for x in category if x in string.ascii_letters]),
 		                         categoryContent = categoryContent,
