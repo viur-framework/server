@@ -17,6 +17,14 @@ $(document).ready(function () {
         })
     });
 
+    // ---- Boolean Bones ----
+    $(".js-viur-bones-bool").each(function () {
+       $(this).on("change",function(){
+           var val = $(this).get(0).checked?"True":"False";
+           $("input[name='"+$(this).data("field")+"']").val(val);
+       })
+    });
+
     // ---- Relational.Treeitem.File Bones ----
 
     function viurBonesFileCreateNewInputGroup(reordableArea) {
