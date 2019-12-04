@@ -379,7 +379,7 @@ class BrowseHandler(webapp.RequestHandler):
 								self.language = lng
 								return path
 							elif ";" in lng:
-								lng, weight = lng.split(";")
+								lng = lng.split(";")[0]
 								if lng in conf["viur.availableLanguages"] or lng in conf["viur.languageAliasMap"]:
 									self.language = lng
 									return path
