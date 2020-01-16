@@ -458,8 +458,19 @@ def doCleanupDeletedFiles(cursor = None):
 		else:
 			if file["itercount"] > maxIterCount:
 				logging.info("Finally deleting, %s" % file["dlkey"])
-				blobstore.delete(file["dlkey"])
+
+				try:
+					blobstore.delete(file["dlkey"])
+
+				except blobstore.PermissionDeniedError:
+					logging.info("No permission to delete this file, ignoring")
+
+				except Exception as e:
+					# logging.exception(e)
+					raise e
+
 				db.Delete(file.key())
+
 				# There should be exactly 1 or 0 of these
 				for f in db.Query("file").filter("dlkey =", file["dlkey"]).iter(keysOnly=True):
 					db.Delete(f)
