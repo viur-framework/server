@@ -53,7 +53,7 @@ class IndexMannager:
 		if query.amount:
 			origFilter.append(("__pagesize =", self.pageSize))
 		origFilter.sort(key=lambda sx: sx[0])
-		filterKey = "".join(["%s%s" % (x, y) for x, y in origFilter])
+		filterKey = "".join([u"{0}{1}".format(x, y).encode("utf-8") for x, y in origFilter])
 		return sha256(filterKey).hexdigest()
 
 	def getOrBuildIndex(self, origQuery):
