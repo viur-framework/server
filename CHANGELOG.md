@@ -16,6 +16,10 @@ This file documents any relevant changes done to ViUR server since version 2.
 - Improved error message for relationalBones that are missing parentKeys, when building sorting filters
 - Correctly process `error.Redirect` exceptions. ([#198](https://github.com/viur-framework/server/pull/198))
 
+### Security
+- Prevent credentialBones from being indexed as this would allow for retrieving it's value using crafted inequality
+  filters (([#200](https://github.com/viur-framework/server/pull/200)))
+
 ## [2.5.0] Vesuv - 2019-06-07
 
 ### Added

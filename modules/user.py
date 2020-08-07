@@ -86,7 +86,7 @@ class userSkel(Skeleton):
 	otpkey = credentialBone(
 		descr=u"OTP hex key",
 		required=False,
-		indexed=True
+		indexed=False
 	)
 	otptimedrift = numericBone(
 		descr=u"OTP time drift",

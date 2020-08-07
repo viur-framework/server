@@ -13,6 +13,8 @@ class credentialBone(stringBone):
 
 	def __init__(self, *args, **kwargs):
 		super(credentialBone, self).__init__(*args, **kwargs)
+		if self.indexed:
+			raise ValueError("Credential-Bones must not be indexed!")
 		if self.multiple or self.languages:
 			raise ValueError("Credential-Bones cannot be multiple or translated!")
 
@@ -29,3 +31,15 @@ class credentialBone(stringBone):
 			We'll never read our value from the database.
 		"""
 		return {}
+
+	def buildDBFilter(self, name, skel, dbFilter, rawFilter, prefix=None):
+		"""
+			Prevent considering this bone in queries as it may leak our data
+		"""
+		return dbFilter
+
+	def buildDBSort( self, name, skel, dbFilter, rawFilter ):
+		"""
+			Prevent considering this bone for sorting as it may leak our data
+		"""
+		return dbFilter
