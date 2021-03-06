@@ -255,10 +255,10 @@ class DefaultRender(object):
 
 	def editItemSuccess(self, skel, params=None, **kwargs):
 		return self.renderEntry(skel, "editSuccess", params)
-		
+
 	def addItemSuccess(self, skel, params=None, **kwargs):
 		return self.renderEntry(skel, "addSuccess", params)
-		
+
 	def addDirSuccess(self, rootNode,  path, dirname, params=None, *args, **kwargs):
 		return json.dumps("OKAY")
 

@@ -384,7 +384,6 @@ class Render( object ):
 			:returns: A dictionary or list of dictionaries.
 			:rtype: dict | list
 		"""
-		#logging.error("collectSkelData %s", skel)
 		if isinstance(skel, list):
 			return [self.collectSkelData(x) for x in skel]
 		res = {}
