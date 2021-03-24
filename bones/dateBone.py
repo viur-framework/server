@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from server.bones import baseBone
 from server import request
-from time import time, mktime
+# FIXME: that first time import was shadowed by the next time import - do we need the now spelled time_time anymore?
+from time import time as time_time, mktime
 from datetime import time, datetime, timedelta
 import logging
 try:
@@ -14,6 +15,7 @@ except:
 datetime.now().strptime("2010%02d%02d"%(1,1),"%Y%m%d")
 datetime.now().strftime("%Y%m%d")
 
+
 class ExtendedDateTime( datetime ):
 	def totimestamp( self ):
 		"""Converts this DateTime-Object back into Unixtime"""
@@ -21,7 +23,7 @@ class ExtendedDateTime( datetime ):
 
 	def strftime(self, format ):
 		"""
-		Provides correct localized names for directives like %a which dont get translated on GAE properly
+		Provides correct localized names for directives like %a which don't get translated on GAE properly
 		This currently replaces %a, %A, %b, %B, %c, %x and %X.
 
 		:param format: String containing the Format to apply.
@@ -43,6 +45,7 @@ class ExtendedDateTime( datetime ):
 		if "%B" in format:
 			format = format.replace( "%B", _("const_month_%s_long" % int( super( ExtendedDateTime, self ).strftime("%m") ) ) )
 		return( super( ExtendedDateTime, self ).strftime( format.encode("UTF-8") ).decode("UTF-8") )
+
 
 class dateBone( baseBone ):
 	type = "date"
@@ -66,7 +69,7 @@ class dateBone( baseBone ):
 			:param time: Should this bone contain time information?
 			:type time: bool
 			:param localize: Automatically convert this time into the users timezone? Only valid if this bone
-                                contains date and time-information!
+				contains date and time-information!
 			:type localize: bool
 		"""
 		baseBone.__init__( self,  *args,  **kwargs )
@@ -97,6 +100,8 @@ class dateBone( baseBone ):
 			:type data: dict
 			:returns: str or None
 		"""
+
+		# FIXME: too much or unneeded unicode conversions of rawValue!!!
 		rawValue = data.get(name, None)
 		if not rawValue:
 			value = None
@@ -107,17 +112,22 @@ class dateBone( baseBone ):
 				value = ExtendedDateTime.fromtimestamp( float(rawValue) )
 		elif not self.date and self.time:
 			try:
-				if unicode(rawValue).count(":")>1:
-					(hour, minute, second) = [int(x.strip()) for x in unicode(rawValue).split(":")]
-					value = time(hour=hour, minute=minute, second=second)
-				elif unicode(rawValue).count(":")>0:
-					(hour, minute) = [int(x.strip()) for x in unicode(rawValue).split(":")]
+				# that should be more efficient, backward compatible and also includes microseconds when provided
+				rawValue = unicode(rawValue)
+				colonCount = rawValue.count(u":")
+				if colonCount > 1:
+					timeComponents = [int(x.strip()) for x in rawValue.split(u":")]
+					value = time(*timeComponents)
+				elif colonCount > 0:
+					hour, minute = [int(x.strip()) for x in rawValue.split(u":")]
 					value = time(hour=hour, minute=minute)
-				elif unicode(rawValue).replace("-",  "",  1).isdigit():
+				elif rawValue.replace(u"-",  u"",  1).isdigit():
 					value = time(second=int(rawValue))
 				else:
 					value = False  # its invalid
-			except:
+			except Exception as err:
+				logging.error("dateBone.fromClient - exception occured!")
+				logging.exception(err)
 				value = False
 		elif unicode(rawValue).lower().startswith("now"):
 			tmpRes = ExtendedDateTime.now()
@@ -129,30 +139,41 @@ class dateBone( baseBone ):
 			value = tmpRes
 		else:
 			try:
-				if " " in rawValue:  # Date with time
+				rawValue = unicode(rawValue)
+				if u" " in rawValue:  # Date with time
 					try:  # Times with seconds
-						if "-" in rawValue:  # ISO Date
-							value = ExtendedDateTime.strptime(unicode(rawValue), "%Y-%m-%d %H:%M:%S")
-						elif "/" in rawValue:  # Ami Date
-							value = ExtendedDateTime.strptime(unicode(rawValue), "%m/%d/%Y %H:%M:%S")
-						else:  # European Date
-							value = ExtendedDateTime.strptime(unicode(rawValue), "%d.%m.%Y %H:%M:%S")
+						colonCount = rawValue.count(u":")
+						if colonCount == 3:  # including microseconds
+							if "-" in rawValue:  # ISO Date
+								value = ExtendedDateTime.strptime(rawValue, "%Y-%m-%d %H:%M:%S:%f")
+							elif "/" in rawValue:  # Ami Date
+								value = ExtendedDateTime.strptime(rawValue, "%m/%d/%Y %H:%M:%S:%f")
+							else:  # European Date
+								value = ExtendedDateTime.strptime(rawValue, "%d.%m.%Y %H:%M:%S:%f")
+						else:  # just seconds
+							if "-" in rawValue:  # ISO Date
+								value = ExtendedDateTime.strptime(rawValue, "%Y-%m-%d %H:%M:%S")
+							elif "/" in rawValue:  # Ami Date
+								value = ExtendedDateTime.strptime(rawValue, "%m/%d/%Y %H:%M:%S")
+							else:  # European Date
+								value = ExtendedDateTime.strptime(rawValue, "%d.%m.%Y %H:%M:%S")
 					except:
 						if "-" in rawValue:  # ISO Date
-							value = ExtendedDateTime.strptime(unicode(rawValue), "%Y-%m-%d %H:%M")
+							value = ExtendedDateTime.strptime(rawValue, "%Y-%m-%d %H:%M")
 						elif "/" in rawValue:  # Ami Date
-							value = ExtendedDateTime.strptime(unicode(rawValue), "%m/%d/%Y %H:%M")
+							value = ExtendedDateTime.strptime(rawValue, "%m/%d/%Y %H:%M")
 						else:  # European Date
-							value = ExtendedDateTime.strptime(unicode(rawValue), "%d.%m.%Y %H:%M")
+							value = ExtendedDateTime.strptime(rawValue, "%d.%m.%Y %H:%M")
 				else:
 					if "-" in rawValue:  # ISO (Date only)
-						value = ExtendedDateTime.strptime(unicode(rawValue), "%Y-%m-%d")
+						value = ExtendedDateTime.strptime(rawValue, "%Y-%m-%d")
 					elif "/" in rawValue:  # Ami (Date only)
-						value = ExtendedDateTime.strptime(unicode(rawValue), "%m/%d/%Y")
+						value = ExtendedDateTime.strptime(rawValue, "%m/%d/%Y")
 					else:  # European (Date only)
-						value =ExtendedDateTime.strptime(unicode(rawValue), "%d.%m.%Y")
+						value =ExtendedDateTime.strptime(rawValue, "%d.%m.%Y")
 			except:
 				value = False  # its invalid
+
 		if value is False:
 			return "Invalid value entered"
 		else:
@@ -218,16 +239,16 @@ class dateBone( baseBone ):
 			# and normalizing the whole thing changes the other values, too
 			# So we parse the whole thing, normalize it (=>get the correct DST-Settings), then replacing the parameters again
 			# and pray that the DST-Settings are still valid..
-			res = ExtendedDateTime(value.year, value.month, value.day, value.hour, value.minute, value.second, tzinfo=tz)
-			res = tz.normalize( res ) #Figure out if its in DST or not
-			res = res.replace( year=value.year, month=value.month, day=value.day, hour=value.hour, minute=value.minute, second=value.second ) #Reset the original values
-			res = utc.normalize( res.astimezone( utc ) )
-		return( res )
+			res = ExtendedDateTime(value.year, value.month, value.day, value.hour, value.minute, value.second, value.microsecond, tzinfo=tz)
+			res = tz.normalize(res)  # Figure out if its in DST or not
+			res = res.replace(year=value.year, month=value.month, day=value.day, hour=value.hour, minute=value.minute, second=value.second, microsecond=value.microsecond)  # Reset the original values
+			res = utc.normalize(res.astimezone(utc))
+		return res
 
 	def serialize(self, valuesCache, name, entity):
 		res = valuesCache.get(name)
 		if res:
-			res = self.readLocalized( datetime.now().strptime( res.strftime( "%d.%m.%Y %H:%M:%S" ), "%d.%m.%Y %H:%M:%S"  ) )
+			res = self.readLocalized( datetime.now().strptime(res.strftime("%d.%m.%Y %H:%M:%S:%f"), "%d.%m.%Y %H:%M:%S:%f"))
 
 			# Crop unwanted values to zero
 			if not self.time:
@@ -239,17 +260,22 @@ class dateBone( baseBone ):
 		return entity
 
 	def unserialize(self, valuesCache, name, expando):
-		if not name in expando:
+		if name not in expando:
 			valuesCache[name] = None
 			return
 		valuesCache[name] = expando[ name ]
-		if valuesCache[name] and (isinstance(valuesCache[name], float) or isinstance( valuesCache[name], int)):
+		if valuesCache[name] and (isinstance(valuesCache[name], float) or isinstance(valuesCache[name], int)):
 			if self.date:
-				self.setLocalized(valuesCache, name, ExtendedDateTime.fromtimestamp( valuesCache[name]))
+				self.setLocalized(valuesCache, name, ExtendedDateTime.fromtimestamp(valuesCache[name]))
 			else:
-				valuesCache[name] = time( hour=int(valuesCache[name]/60), minute=int(valuesCache[name]%60) )
+				# TODO: do we have or can we retain microseconds here?
+				valuesCache[name] = time(hour=int(valuesCache[name] / 60), minute=int(valuesCache[name] % 60))
 		elif isinstance( valuesCache[name], datetime ):
-			self.setLocalized(valuesCache, name, ExtendedDateTime.now().strptime( valuesCache[name].strftime( "%d.%m.%Y %H:%M:%S" ), "%d.%m.%Y %H:%M:%S") )
+			try:
+				self.setLocalized(valuesCache, name, ExtendedDateTime.now().strptime(valuesCache[name].strftime("%d.%m.%Y %H:%M:%S:%f"), "%d.%m.%Y %H:%M:%S:%f"))
+			except Exception as err:
+				logging.exception(err)
+				self.setLocalized(valuesCache, name, ExtendedDateTime.now().strptime(valuesCache[name].strftime("%d.%m.%Y %H:%M:%S"), "%d.%m.%Y %H:%M:%S"))
 		else:
 			# We got garbarge from the datastore
 			valuesCache[name] = None
@@ -265,8 +291,14 @@ class dateBone( baseBone ):
 			utc = pytz.utc
 			tz = pytz.timezone(timeZone)
 			value = tz.normalize(value.replace(tzinfo=utc).astimezone(tz))
-			value = ExtendedDateTime(value.year, value.month, value.day,
-						value.hour, value.minute, value.second)
+			value = ExtendedDateTime(
+				value.year,
+				value.month,
+				value.day,
+				value.hour,
+				value.minute,
+				value.second,
+				value.microsecond)
 		valuesCache[name] = value
 
 	def buildDBFilter( self, name, skel, dbFilter, rawFilter, prefix=None ):
