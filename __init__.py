@@ -400,6 +400,22 @@ class BrowseHandler(webapp.RequestHandler):
 		self.args = []
 		self.kwargs = {}
 		#Add CSP headers early (if any)
+
+		if conf["viur.earlyInterceptionHook"]:
+			try:
+				newPath = conf["viur.earlyInterceptionHook"](path)
+				if newPath != path:
+					self.response.clear()
+					self.response.set_status(410, "Gone")
+					self.response.out.write(newPath)
+					return
+			except errors.Redirect as err:
+				if conf["viur.debug.traceExceptions"]:
+					raise
+				logging.debug("early redirect: %r", err.url.encode("UTF-8"))
+				self.redirect(err.url.encode("UTF-8"))
+				return
+
 		if conf["viur.security.contentSecurityPolicy"] and conf["viur.security.contentSecurityPolicy"]["_headerCache"]:
 			for k,v in conf["viur.security.contentSecurityPolicy"]["_headerCache"].items():
 				self.response.headers[k] = v
