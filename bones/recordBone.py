@@ -7,13 +7,14 @@ import extjson, copy
 class recordBone(baseBone):
 	type = "record"
 
-	def __init__(self, using, format=None, indexed=False, multiple=True, *args, **kwargs):
+	def __init__(self, using=None, format=None, indexed=False, multiple=True, *args, **kwargs):
 		super(recordBone, self).__init__(indexed=indexed, multiple=multiple, *args, **kwargs)
+
+		if not using or not format or indexed or not multiple:
+			raise NotImplementedError("A recordBone must have 'using' and 'format' parameter, 'multiple=True' and 'indexed=False' is mandatory")
 
 		self.using = using
 		self.format = format
-		if not format or indexed or not multiple:
-			raise NotImplementedError("A recordBone must not be indexed, must be multiple and must have a format set")
 
 		if getSystemInitialized():
 			self._usingSkelCache = using()
