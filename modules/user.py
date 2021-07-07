@@ -153,6 +153,8 @@ class UserPassword(object):
 
 		# Check if the username matches
 		storedUserName = res.get("name.idx", "")
+		if isinstance(storedUserName, list):  # Multiple emails: only use main one (first in list)
+			storedUserName = storedUserName[0]
 		if len(storedUserName) != len(name.lower()):
 			isOkay = False
 		else:
@@ -176,7 +178,7 @@ class UserPassword(object):
 		if not isOkay:
 			skel=self.loginSkel()
 			skel.fromClient({"name": name, "nomissing": "1"})
-			return self.userModule.render.login(skel, loginFailed=True)
+			return self.userModule.render.login(skel, params={"loginFailed": True})
 		else:
 			if not "password_salt" in res: #Update the password to the new, more secure format
 				res[ "password_salt" ] = utils.generateRandomString( 13 )
@@ -202,7 +204,10 @@ class UserPassword(object):
 			skel = self.lostPasswordSkel()
 			if len(kwargs)==0 or not skel.fromClient(kwargs) or not securitykey.validate(skey):
 				return self.userModule.render.passwdRecover(skel, tpl=self.passwordRecoveryTemplate)
-			user = self.userModule.viewSkel().all().filter("name.idx =", skel["name"].lower()).get()
+			skel_name = skel["name"]
+			if isinstance(skel_name, list):   # Multiple emails: only use main one (first in list)
+				skel_name = skel_name[0]
+			user = self.userModule.viewSkel().all().filter("name.idx =", skel_name.lower()).get()
 
 			if not user or user["status"]<10: # Unknown user or locked account
 				skel.errors["name"] = _("Unknown user")
@@ -366,6 +371,14 @@ class TimeBasedOTP(object):
 		user = db.Get(userKey)
 		return all([(x in user and (x=="otptimedrift" or bool(user[x]))) for x in ["otpid", "otpkey", "otptimedrift"]])
 
+	class otpSkel( RelSkel ):
+		otptoken = stringBone(descr="Token", required=True, caseSensitive=False, indexed=True)
+
+	def render(self, **params):
+		return self.userModule.render.edit(self.otpSkel(), action="otp",
+		                                    tpl=self.userModule.loginSecondFactorTemplate,
+		                                    params=params)
+
 	def startProcessing(self, userKey):
 		user = db.Get(userKey)
 		if all([(x in user and user[x]) for x in ["otpid", "otpkey"]]):
@@ -377,12 +390,9 @@ class TimeBasedOTP(object):
 								"timestamp": time(),
 								"failures": 0}
 			session.current.markChanged()
-			return self.userModule.render.loginSucceeded(msg="X-VIUR-2FACTOR-TimeBasedOTP")
+			return self.render()
 
 		return None
-
-	class otpSkel( RelSkel ):
-		otptoken = stringBone(descr="Token", required=True, caseSensitive=False, indexed=True)
 
 	def generateOtps(self, secret, timeDrift):
 		"""
@@ -414,12 +424,13 @@ class TimeBasedOTP(object):
 
 	@exposed
 	@forceSSL
-	def otp(self, otptoken = None, skey = None, *args, **kwargs ):
+	def otp(self, otptoken = None, skey = None, *args, **kwargs):
 		token = session.current.get("_otp_user")
 		if not token:
 			raise errors.Forbidden()
 		if otptoken is None:
-			self.userModule.render.edit(self.otpSkel())
+			return self.render()
+
 		if not securitykey.validate(skey):
 			raise errors.PreconditionFailed()
 		if token["failures"] > 3:
@@ -431,7 +442,12 @@ class TimeBasedOTP(object):
 			otptoken = int(otptoken)
 		except:
 			# We got a non-numeric token - this cant be correct
-			self.userModule.render.edit(self.otpSkel(), tpl=self.otpTemplate)
+
+			return self.render()
+
+		#logging.debug(otptoken)
+		#logging.debug(validTokens)
+		#logging.debug(otptoken in validTokens)
 
 		if otptoken in validTokens:
 			userKey = session.current["_otp_user"]["uid"]
@@ -451,7 +467,8 @@ class TimeBasedOTP(object):
 			token["failures"] += 1
 			session.current["_otp_user"] = token
 			session.current.markChanged()
-			return self.userModule.render.edit(self.otpSkel(), loginFailed=True, tpl=self.otpTemplate)
+
+			return self.render(secondFactorFailed=True)
 
 	def updateTimeDrift(self, userKey, idx):
 		"""
@@ -477,6 +494,7 @@ class User(List):
 	lostPasswordTemplate = "user_lostpassword"
 	verifyEmailAddressMail = "user_verify_address"
 	passwordRecoveryMail = "user_password_recovery"
+	loginSecondFactorTemplate = "user_login_secondfactor"
 
 	authenticationProviders = [UserPassword, GoogleAccount]
 	secondFactorProviders = [TimeBasedOTP]
@@ -729,6 +747,7 @@ def createNewUserIfNotExists():
 	"""
 		Create a new Admin user, if the userDB is empty
 	"""
+	logging.warning("createNewUserIfNotExists")
 	userMod = getattr(conf["viur.mainApp"], "user", None)
 	if (userMod # We have a user module
 		and isinstance(userMod, User)

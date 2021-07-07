@@ -382,5 +382,5 @@ class stringBone( baseBone ):
 		"""
 		if not valuesCache[name] and not self.required: #Dont enforce a unique property on an empty string if we are required=False
 			return( None )
-		return( super( stringBone, self).getUniquePropertyIndexValue(valuesCache, name))
+		return super( stringBone, self).getUniquePropertyIndexValue(valuesCache, name)
 

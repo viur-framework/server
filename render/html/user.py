@@ -4,30 +4,30 @@ from string import Template
 import default
 from server.skeleton import Skeleton
 
-class Render( default.Render ): #Render user-data to xml
+class Render(default.Render): #Render user-data to HTML
 	loginTemplate = "user_login"
-	logoutSuccessTemplate = "user_logout_success"
 	loginSuccessTemplate = "user_login_success"
+	logoutSuccessTemplate = "user_logout_success"
 	verifySuccessTemplate = "user_verify_success"
 	verifyFailedTemplate = "user_verify_failed"
 	passwdRecoverInfoTemplate = "user_passwdrecover_info"
 
-	def login(self, authMethods, tpl=None,  **kwargs):
+	def login(self, skel, tpl=None,  **kwargs):
 		if "loginTemplate" in dir(self.parent):
 			tpl = tpl or self.parent.loginTemplate
 		else:
 			tpl = tpl or self.loginTemplate
 
-		template = self.getEnv().get_template(self.getTemplateFileName(tpl))
-		return template.render(authMethods=authMethods, **kwargs)
+		return self.edit(skel, tpl=tpl, **kwargs)
 
-	def loginSucceeded( self, tpl=None, **kwargs ):
-		if "loginSuccessTemplate" in dir( self.parent ):
+	def loginSucceeded(self, tpl=None, **kwargs):
+		if "loginSuccessTemplate" in dir(self.parent):
 			tpl = tpl or self.parent.loginSuccessTemplate
 		else:
 			tpl = tpl or self.loginSuccessTemplate
-		template= self.getEnv().get_template( self.getTemplateFileName( tpl ) )
-		return( template.render( **kwargs ) )
+
+		template = self.getEnv().get_template(self.getTemplateFileName(tpl))
+		return template.render(**kwargs)
 
 	def logoutSuccess(self, tpl=None, **kwargs ):
 		if "logoutSuccessTemplate" in dir( self.parent ):
