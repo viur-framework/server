@@ -113,6 +113,62 @@ class selectBone(baseBone):
 
 		return True
 
+	def buildDBFilter( self, name, skel, dbFilter, rawFilter, prefix=None ):
+		"""
+			Parses the searchfilter a client specified in his Request into
+			something understood by the datastore.
+			This function must:
+
+				* Ignore all filters not targeting this bone
+				* Safely handle malformed data in rawFilter
+					(this parameter is directly controlled by the client)
+
+			:param name: The property-name this bone has in its Skeleton (not the description!)
+			:type name: str
+			:param skel: The :class:`server.db.Query` this bone is part of
+			:type skel: :class:`server.skeleton.Skeleton`
+			:param dbFilter: The current :class:`server.db.Query` instance the filters should be applied to
+			:type dbFilter: :class:`server.db.Query`
+			:param rawFilter: The dictionary of filters the client wants to have applied
+			:type rawFilter: dict
+			:returns: The modified :class:`server.db.Query`
+		"""
+		myKeys = [key for key in rawFilter.keys() if (key==name or key.startswith(name+"$"))]
+		if len(myKeys) == 0:
+			return dbFilter
+		if not self.indexed and name != "key":
+			logging.warning("Invalid searchfilter! %s is not indexed!" % name)
+			raise RuntimeError()
+		for key in myKeys:
+			value = rawFilter[key]
+			for k,v in self.values.items():
+				if unicode(value) == unicode(k):
+					value = k
+					break
+			else:
+				continue
+			tmpdata = key.split("$")
+			if len(tmpdata) > 1:
+				if isinstance(value, list):
+					continue
+				if tmpdata[1] == "lt":
+					dbFilter.filter((prefix or "") + tmpdata[0] + " <", value)
+				elif tmpdata[1] == "le":
+					dbFilter.filter((prefix or "") + tmpdata[0] + " <=", value)
+				elif tmpdata[1] == "gt":
+					dbFilter.filter((prefix or "") + tmpdata[0] + " >",  value)
+				elif tmpdata[1] == "ge":
+					dbFilter.filter((prefix or "") + tmpdata[0] + " >=",  value)
+				elif tmpdata[1] == "lk":
+					dbFilter.filter((prefix or "") + tmpdata[0],  value)
+				else:
+					dbFilter.filter((prefix or "") + tmpdata[0],  value)
+			else:
+				if isinstance( value, list ):
+					dbFilter.filter((prefix or "") + key + " IN", value)
+				else:
+					dbFilter.filter((prefix or "") + key, value)
+		return dbFilter
 
 class selectOneBone(selectBone):
 	def __init__(self, *args, **kwargs):
