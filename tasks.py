@@ -160,6 +160,7 @@ class TaskHandler:
 			except Exception as e:
 				logging.exception(e)
 				raise errors.RequestTimeout() #Task-API should retry
+		session.current.session.changed = False  # Reset session changed marker - don't initialize this session
 	deferred.exposed=True
 
 	def index(self, *args, **kwargs):
