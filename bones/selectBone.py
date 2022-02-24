@@ -3,23 +3,24 @@ from server.bones import baseBone
 from collections import OrderedDict
 import logging
 
+
 class selectBone(baseBone):
 	type = "select"
 
-	def __init__(self, defaultValue=None, values={}, multiple=False, *args, **kwargs):
+	def __init__(self, defaultValue=None, values=None, multiple=False, *args, **kwargs):
 		"""
 			Creates a new selectBone.
 
 			:param defaultValue: List of keys which will be checked by default
 			:type defaultValue: list
 			:param values: dict of key->value pairs from which the user can choose from. Values will be translated
-			:type values: dict
+			:type values: dict|OrderedDict|callable
 		"""
 
 		if defaultValue is None and multiple:
 			defaultValue = []
 
-		super(selectBone, self ).__init__(defaultValue=defaultValue, multiple=multiple, *args, **kwargs)
+		super(selectBone, self).__init__(defaultValue=defaultValue, multiple=multiple, *args, **kwargs)
 
 		if "sortBy" in kwargs:
 			logging.warning("The sortBy parameter is deprecated. Please use an orderedDict for 'values' instead")
@@ -30,7 +31,7 @@ class selectBone(baseBone):
 				sortBy = kwargs["sortBy"]
 
 				if not sortBy in ["keys", "values"]:
-					raise ValueError( "sortBy must be \"keys\" or \"values\"" )
+					raise ValueError("sortBy must be \"keys\" or \"values\"")
 
 				if sortBy == "keys":
 					vals.sort(key=lambda x: x[0])
@@ -39,13 +40,31 @@ class selectBone(baseBone):
 			else:
 				vals.sort(key=lambda x: x[1])
 
-			self.values = OrderedDict(vals)
+			self._values = OrderedDict(vals)
 
 		elif isinstance(values, list):
-			self.values = OrderedDict([(x, x) for x in values])
+			self._values = OrderedDict([(x, x) for x in values])
 
 		elif isinstance(values, OrderedDict):
-			self.values = values
+			self._values = values
+
+		elif callable(values):
+			self._values = values
+
+		else:
+			self._values = {}
+
+	def __getattribute__(self, item):
+		if item == "values":
+			values = self._values
+			if callable(values):
+				values = values()
+				if not isinstance(values, (dict, OrderedDict)):
+					values = {}
+
+			return values
+
+		return super(selectBone, self).__getattribute__(item)
 
 	def fromClient(self, valuesCache, name, data):
 		values = data.get(name)
@@ -92,12 +111,14 @@ class selectBone(baseBone):
 
 			return "No item selected"
 
+
 	def serialize(self, valuesCache, name, entity):
 		if not self.multiple:
 			return super(selectBone, self).serialize(valuesCache, name, entity)
 
 		entity.set(name, None if not valuesCache[name] else valuesCache[name], self.indexed)
 		return entity
+
 
 	def unserialize(self, valuesCache, name, expando):
 		if not self.multiple:
@@ -119,15 +140,18 @@ class selectOneBone(selectBone):
 		super(selectOneBone, self).__init__(multiple=False, *args, **kwargs)
 		logging.warning("%s: The selectOneBone is deprecated. Please use selectBone() instead.", self.descr)
 
+
 class selectMultiBone(selectBone):
 	def __init__(self, *args, **kwargs):
 		super(selectMultiBone, self).__init__(multiple=True, *args, **kwargs)
-		logging.warning("%s: The selectMultiBone is deprecated. Please use selectBone(multiple=True) instead.", self.descr)
+		logging.warning("%s: The selectMultiBone is deprecated. Please use selectBone(multiple=True) instead.",
+						self.descr)
+
 
 class selectAccessBone(selectBone):
 	type = "select.access"
 
-	def __init__( self, *args, **kwargs ):
+	def __init__(self, *args, **kwargs):
 		"""
 			Creates a new AccessSelectMultiBone.
 			This bone encapulates elements that have a postfix "-add", "-delete",
