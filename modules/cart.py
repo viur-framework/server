@@ -91,7 +91,8 @@ class Cart(List):
 			items = SkelList( self.productSkel )
 
 		for skel in items:
-			skel["amt"] = numericBone(
+			skel.clone()
+			skel.amt = numericBone(
 							descr="Quantity",
 							defaultValue=session.current["cart_products"][str(skel["key"].value)]["amount"])
 

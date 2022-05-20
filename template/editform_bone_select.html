@@ -28,14 +28,9 @@
     >
         {%- for key, descr in boneParams["values"].items() %}
             {% if loop.first %}
-                <option value="" {{ "selected" if not boneValue }} {{ "disabled" if boneParams.required}} hidden>
-                    -
-                </option>
+                <option value="" {{ "selected" if not boneValue }} {{ "disabled" if boneParams.required}} hidden>-</option>
             {% endif %}
-
-            <option value="{{ key }}" {{ "selected" if boneValue == key }}>
-                {{ descr }}
-            </option>
+            <option value="{{ key }}" {{ "selected" if boneValue == key }}>{{ descr }}</option>
         {% endfor -%}
     </select>
 {% endif %}

@@ -362,16 +362,33 @@ class BrowseHandler(webapp.RequestHandler):
 			tmppath = [ urlparse.unquote( x ) for x in tmppath.lower().strip("/").split("/") ]
 			if len( tmppath )>0 and tmppath[0] in conf["viur.availableLanguages"]+list( conf["viur.languageAliasMap"].keys() ):
 				self.language = tmppath[0]
-				return( path[ len( tmppath[0])+1: ] ) #Return the path stripped by its language segment
+				return path[ len( tmppath[0])+1: ]  # Return the path stripped by its language segment
 			else: # This URL doesnt contain an language prefix, try to read it from session
-				if session.current.getLanguage():
-					self.language = session.current.getLanguage()
-				elif "X-Appengine-Country" in self.request.headers.keys():
+				sessionLang = session.current.getLanguage()
+				if sessionLang:
+					self.language = sessionLang
+					return path
+				if "Accept-Language" in self.request.headers:
+					acceptLangHeader = self.request.headers["Accept-Language"]
+					if acceptLangHeader:
+						acceptLangHeader = acceptLangHeader.split(",")
+						# we only accept up to seven language entries here.
+						for possibleLang in acceptLangHeader[:7]:
+							lng = possibleLang.split("-")[0]
+							if lng in conf["viur.availableLanguages"] or lng in conf["viur.languageAliasMap"]:
+								self.language = lng
+								return path
+							elif ";" in lng:
+								lng = lng.split(";")[0]
+								if lng in conf["viur.availableLanguages"] or lng in conf["viur.languageAliasMap"]:
+									self.language = lng
+									return path
+				if "X-Appengine-Country" in self.request.headers.keys():
 					lng = self.request.headers["X-Appengine-Country"].lower()
 					if lng in conf["viur.availableLanguages"] or lng in conf["viur.languageAliasMap"]:
 						self.language = lng
-		return( path )
-
+						return path
+		return path
 
 	def processRequest( self, path, *args, **kwargs ): #Bring up the enviroment for this request, handle errors
 		self.internalRequest = False
@@ -383,6 +400,22 @@ class BrowseHandler(webapp.RequestHandler):
 		self.args = []
 		self.kwargs = {}
 		#Add CSP headers early (if any)
+
+		if conf["viur.earlyInterceptionHook"]:
+			try:
+				newPath = conf["viur.earlyInterceptionHook"](path)
+				if newPath != path:
+					self.response.clear()
+					self.response.set_status(410, "Gone")
+					self.response.out.write(newPath)
+					return
+			except errors.Redirect as err:
+				if conf["viur.debug.traceExceptions"]:
+					raise
+				logging.debug("early redirect: %r", err.url.encode("UTF-8"))
+				self.redirect(err.url.encode("UTF-8"))
+				return
+
 		if conf["viur.security.contentSecurityPolicy"] and conf["viur.security.contentSecurityPolicy"]["_headerCache"]:
 			for k,v in conf["viur.security.contentSecurityPolicy"]["_headerCache"].items():
 				self.response.headers[k] = v
